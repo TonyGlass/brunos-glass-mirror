@@ -9,6 +9,73 @@ const supabaseClient = window.supabase.createClient(
 const menuToggle = document.querySelector('.menu-toggle');
 const siteNav = document.querySelector('#site-nav');
 const quoteForm = document.querySelector('#quote-form');
+function calculateEstimatedPrice({
+  service,
+  glassType,
+  hardwareFinish,
+  squareFeet,
+  quantity
+}) {
+  const sqft = Number(squareFeet) || 0;
+const qty = Number(quantity) || 1;
+const serviceName = String(service || '').trim().toLowerCase();
+const glassName = String(glassType || '').trim().toLowerCase();
+const hardwareName = String(hardwareFinish || '').trim().toLowerCase();
+
+let low = 0;
+let high = 0;
+
+  // FRAMLESS SHOWER DOORS
+  if (serviceName.includes('frameless')) {
+    low = 1200 + (sqft * 55);
+    high = 1200 + (sqft * 75);
+
+    // 1/2" glass premium
+    if (glassName.includes('1/2')) {
+      low *= 1.15;
+      high *= 1.15;
+    }
+
+    // Premium hardware
+    if (
+  hardwareFinish &&
+  (
+    hardwareName.includes('brass') ||
+    hardwareName.includes('gold') ||
+    hardwareName.includes('matte black')
+  )
+)
+    {
+      low += 150;
+      high += 400;
+    }
+  }
+
+  // MIRROR
+  else if (serviceName.includes('mirror')) {
+    low = 175 + (sqft * 18);
+    high = 175 + (sqft * 30);
+  }
+
+  // GLASS
+ else if (serviceName.includes('glass')) {
+    low = 300 + (sqft * 55);
+    high = 300 + (sqft * 90);
+  }
+
+  // Quantity
+  low *= qty;
+  high *= qty;
+
+  if (low <= 0 || high <= 0) {
+    return null;
+  }
+
+  return {
+    low: Math.round(low),
+    high: Math.round(high)
+  };
+}
 const formStatus = document.querySelector('#form-status');
 const currentYear = document.querySelector('#current-year');
 
@@ -301,7 +368,8 @@ if (
 
   serviceSelect.addEventListener('change', () => {
 
-    const selectedService = serviceSelect.value;
+    const selectedService =
+  serviceSelect.options[serviceSelect.selectedIndex]?.text.trim() || '';
 
 
     // -------------------------------------------------
@@ -607,31 +675,61 @@ if (quoteForm && formStatus) {
 
     const squareFeet =
       width && height ? Number(((width * height) / 144).toFixed(2)) : null;
-
+const estimatedPrice = calculateEstimatedPrice({
+  service: serviceSelect.options[serviceSelect.selectedIndex].text.trim(),
+  glassType: glassTypeSelect.value,
+  hardwareFinish: hardwareFinishSelect.value,
+  squareFeet:
+  parseFloat(widthInput.value) > 0 &&
+  parseFloat(heightInput.value) > 0
+    ? (parseFloat(widthInput.value) * parseFloat(heightInput.value)) / 144
+    : 0,
+  quantity:
+    parseInt(document.querySelector('#quantity').value, 10) || 1
+});
+console.log('ESTIMATED PRICE:', estimatedPrice);
     const quoteData = {
-      name: document.querySelector('#name').value.trim(),
-      phone: document.querySelector('#phone').value.trim(),
-      email: document.querySelector('#email').value.trim(),
-      city: document.querySelector('#city').value,
+  name: document.querySelector('#name').value.trim(),
+  phone: document.querySelector('#phone').value.trim(),
+  email: document.querySelector('#email').value.trim(),
+  city: document.querySelector('#city').value,
 
-      service: serviceSelect.value,
-      product: productSelect.value || null,
-      door_type: doorTypeSelect.value || null,
-      glass_type: glassTypeSelect.value || null,
-      hardware_finish: hardwareFinishSelect.value || null,
-      handle_style: handleStyleSelect.value || null,
+  service: serviceSelect.value,
+  product: productSelect.value || null,
+  door_type: doorTypeSelect.value || null,
+  glass_type: glassTypeSelect.value || null,
+  hardware_finish: hardwareFinishSelect.value || null,
+  handle_style: handleStyleSelect.value || null,
 
-      quantity:
-        parseInt(document.querySelector('#quantity').value, 10) || 1,
+  quantity:
+    parseInt(document.querySelector('#quantity').value, 10) || 1,
 
-      width: width,
-      height: height,
-      square_feet: squareFeet,
+  width: width,
+  height: height,
+  square_feet:
+  parseFloat(widthInput.value) > 0 &&
+  parseFloat(heightInput.value) > 0
+    ? (parseFloat(widthInput.value) * parseFloat(heightInput.value)) / 144
+    : null,
 
-      message: document.querySelector('#project').value.trim(),
+  message: document.querySelector('#project').value.trim(),
 
-      status: 'New'
-    };
+  estimated_price: estimatedPrice
+  ? Math.round((estimatedPrice.low + estimatedPrice.high) / 2)
+  : null,
+
+estimated_price_low: estimatedPrice
+  ? estimatedPrice.low
+  : null,
+
+estimated_price_high: estimatedPrice
+  ? estimatedPrice.high
+  : null,
+
+final_price: null,
+
+  status: 'New'
+};
 
     formStatus.textContent = 'Sending your quote request...';
 
@@ -660,11 +758,11 @@ if (quoteForm && formStatus) {
       calculateSquareFeet();
 
     } catch (error) {
-      console.error('Quote submission error:', error);
+  console.error('Quote submission error:', error);
 
-      formStatus.textContent =
-        'Sorry, we could not send your request. Please call us directly.';
-    } finally {
+  formStatus.textContent =
+    `Sorry, we could not send your request. ${error.message || 'Please try again.'}`;
+} finally {
       if (submitButton) {
         submitButton.disabled = false;
       }

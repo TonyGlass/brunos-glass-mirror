@@ -1,2 +1,5 @@
 [functions.submit-quote]
 verify_jwt = false
+
+[functions.admin-quotes]
+verify_jwt = true

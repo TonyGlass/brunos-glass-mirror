@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin CRM | Bruno's Glass &amp; Mirror</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="admin-shell">
+    <section class="login-panel" id="login-panel" aria-labelledby="login-title">
+      <a class="admin-brand" href="index.html">Bruno's <strong>Glass &amp; Mirror</strong></a>
+      <p class="eyebrow">Private workspace</p>
+      <h1 id="login-title">Quote desk</h1>
+      <p class="panel-copy">Sign in to manage customer requests and project follow-up.</p>
+      <form id="login-form" class="login-form">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" autocomplete="username" required />
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" autocomplete="current-password" required />
+        <button class="button button-accent" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="form-status" id="login-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="crm-panel" id="crm-panel" hidden>
+      <header class="crm-header">
+        <div>
+          <p class="eyebrow">Bruno's private workspace</p>
+          <h1>Quote desk</h1>
+        </div>
+        <button class="button button-quiet" id="sign-out" type="button">Sign out</button>
+      </header>
+
+      <div class="crm-toolbar">
+        <div>
+          <p class="section-kicker">Customer requests</p>
+          <h2>Recent quotes <span id="quote-count">0</span></h2>
+        </div>
+        <button class="button button-dark" id="refresh-quotes" type="button">Refresh</button>
+      </div>
+      <p class="form-status" id="crm-status" role="status" aria-live="polite"></p>
+
+      <div class="quotes-layout">
+        <section class="quotes-list-panel" aria-label="Quotes">
+          <div class="quotes-table-wrap">
+            <table class="quotes-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Service</th>
+                  <th>Estimate</th>
+                  <th>Status</th>
+                  <th><span class="sr-only">Open</span></th>
+                </tr>
+              </thead>
+              <tbody id="quotes-body"></tbody>
+            </table>
+          </div>
+          <p class="empty-state" id="empty-state" hidden>No quotes have been submitted yet.</p>
+        </section>
+
+        <aside class="quote-detail" id="quote-detail" aria-live="polite">
+          <div class="detail-placeholder">
+            <span class="detail-mark">BG</span>
+            <p>Select a quote to view its details.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

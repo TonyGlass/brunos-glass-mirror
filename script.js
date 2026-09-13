@@ -9,6 +9,18 @@ const supabaseClient = window.supabase.createClient(
 const menuToggle = document.querySelector('.menu-toggle');
 const siteNav = document.querySelector('#site-nav');
 const quoteForm = document.querySelector('#quote-form');
+const photosInput = document.querySelector('#photos');
+const QUOTE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/submit-quote`;
+const MAX_QUOTE_FILES = 5;
+const MAX_QUOTE_FILE_SIZE = 50 * 1024 * 1024;
+const ALLOWED_QUOTE_FILE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime'
+]);
 function calculateEstimatedPrice({
   service,
   glassType,
@@ -669,6 +681,24 @@ if (quoteForm && formStatus) {
     event.preventDefault();
 
     const submitButton = quoteForm.querySelector('button[type="submit"]');
+    const selectedFiles = Array.from(photosInput?.files || []);
+
+    if (selectedFiles.length > MAX_QUOTE_FILES) {
+      formStatus.textContent = 'Please select no more than 5 files.';
+      return;
+    }
+
+    const invalidFile = selectedFiles.find(
+      (file) =>
+        !ALLOWED_QUOTE_FILE_TYPES.has(file.type) ||
+        file.size > MAX_QUOTE_FILE_SIZE
+    );
+
+    if (invalidFile) {
+      formStatus.textContent =
+        `${invalidFile.name} must be a JPEG, PNG, WebP, MP4, WebM, or MOV file no larger than 50 MB.`;
+      return;
+    }
 
     const width = parseFloat(document.querySelector('#width').value) || null;
     const height = parseFloat(document.querySelector('#height').value) || null;
@@ -738,13 +768,56 @@ final_price: null,
     }
 
     try {
-      const { error } = await supabaseClient
-        .from('quotes')
-        .insert([quoteData]);
+      const functionHeaders = {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+      };
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      const createResponse = await fetch(QUOTE_FUNCTION_URL, {
+        method: 'POST',
+        headers: functionHeaders,
+        body: JSON.stringify({
+          action: 'create',
+          quote: quoteData,
+          files: selectedFiles.map((file) => ({
+            name: file.name,
+            size: file.size,
+            type: file.type
+          }))
+        })
+      });
+
+      const createResult = await createResponse.json();
+
+      if (!createResponse.ok) {
+        throw new Error(createResult.error || 'Could not create the quote.');
+      }
+
+      for (const [index, upload] of createResult.uploads.entries()) {
+        const file = selectedFiles[index];
+        const { error: uploadError } = await supabaseClient.storage
+          .from('quote-photos')
+          .uploadToSignedUrl(upload.path, upload.token, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+      }
+
+      const finalizeResponse = await fetch(QUOTE_FUNCTION_URL, {
+        method: 'POST',
+        headers: functionHeaders,
+        body: JSON.stringify({
+          action: 'finalize',
+          finalizeToken: createResult.finalizeToken
+        })
+      });
+
+      const finalizeResult = await finalizeResponse.json();
+
+      if (!finalizeResponse.ok) {
+        throw new Error(finalizeResult.error || 'Could not save uploaded files.');
       }
 
       formStatus.textContent =

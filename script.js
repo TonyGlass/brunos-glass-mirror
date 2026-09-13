@@ -106,6 +106,95 @@ const hardwareGroup = document.querySelector('#hardware-group');
 const hardwareFinishSelect = document.querySelector('#hardware-finish');
 const handleStyleSelect = document.querySelector('#handle-style');
 
+function renderChoiceCards(select, choiceList) {
+  if (!select || !choiceList) {
+    return;
+  }
+
+  choiceList.replaceChildren();
+
+  Array.from(select.options)
+    .filter((option) => option.value)
+    .forEach((option) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'choice-card option-card';
+      button.dataset.value = option.value;
+      button.setAttribute('aria-pressed', String(select.value === option.value));
+
+      const title = document.createElement('span');
+      title.className = 'choice-card-title';
+      title.textContent = option.textContent.trim();
+      button.appendChild(title);
+
+      button.addEventListener('click', () => {
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      choiceList.appendChild(button);
+    });
+
+  choiceList.hidden = choiceList.children.length === 0;
+}
+
+function syncChoiceCards(select) {
+  const choiceList = document.querySelector(
+    `[data-choice-list-for="${select.id}"]`
+  );
+
+  if (!choiceList) {
+    return;
+  }
+
+  choiceList.querySelectorAll('.choice-card').forEach((button) => {
+    const isSelected = button.dataset.value === select.value;
+    button.classList.toggle('is-selected', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
+}
+
+[
+  productSelect,
+  doorTypeSelect,
+  glassTypeSelect,
+  hardwareFinishSelect,
+  handleStyleSelect
+].forEach((select) => {
+  if (!select) {
+    return;
+  }
+
+  const choiceList = document.querySelector(
+    `[data-choice-list-for="${select.id}"]`
+  );
+
+  renderChoiceCards(select, choiceList);
+  select.addEventListener('change', () => syncChoiceCards(select));
+
+  new MutationObserver(() => {
+    renderChoiceCards(select, choiceList);
+    syncChoiceCards(select);
+  }).observe(select, { childList: true });
+});
+
+document.querySelectorAll('[data-select="service"]').forEach((button) => {
+  button.addEventListener('click', () => {
+    serviceSelect.value = button.dataset.value;
+    serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+});
+
+function syncServiceCards() {
+  document.querySelectorAll('[data-select="service"]').forEach((button) => {
+    const isSelected = button.dataset.value === serviceSelect.value;
+    button.classList.toggle('is-selected', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
+}
+
+serviceSelect?.addEventListener('change', syncServiceCards);
+
 
 // =====================================================
 // PRODUCTS
@@ -561,6 +650,9 @@ if (
   // Automatically select the correct door type
   doorTypeSelect.value = product.doorType;
 
+  syncChoiceCards(glassTypeSelect);
+  syncChoiceCards(doorTypeSelect);
+
   // Update product gallery
   updateProductGallery(product);
 
@@ -580,8 +672,8 @@ const squareFeetResult = document.querySelector('#square-feet-result');
 
 function calculateSquareFeet() {
 
-  const width = parseFloat(widthInput.value);
-  const height = parseFloat(heightInput.value);
+  const width = parseConstructionMeasurement(widthInput.value);
+  const height = parseConstructionMeasurement(heightInput.value);
 
 
   if (width > 0 && height > 0) {
@@ -598,6 +690,41 @@ function calculateSquareFeet() {
 
   }
 
+}
+
+function parseConstructionMeasurement(value) {
+  const normalizedValue = String(value || '').trim();
+
+  if (!normalizedValue) {
+    return NaN;
+  }
+
+  const parts = normalizedValue.split(/\s+/);
+  const hasStandaloneFraction = parts.length === 1 && parts[0].includes('/');
+  const whole = hasStandaloneFraction ? 0 : Number(parts[0]);
+  const fraction = (hasStandaloneFraction ? parts[0] : parts[1])?.split('/');
+
+  if (!Number.isFinite(whole) || (!fraction && parts.length !== 1)) {
+    return NaN;
+  }
+
+  if (parts.length === 1 && !hasStandaloneFraction) {
+    return whole;
+  }
+
+  const numerator = Number(fraction[0]);
+  const denominator = Number(fraction[1]);
+
+  if (
+    (!hasStandaloneFraction && parts.length !== 2) ||
+    !Number.isFinite(numerator) ||
+    !Number.isFinite(denominator) ||
+    denominator <= 0
+  ) {
+    return NaN;
+  }
+
+  return whole + (numerator / denominator);
 }
 
 
@@ -700,8 +827,8 @@ if (quoteForm && formStatus) {
       return;
     }
 
-    const width = parseFloat(document.querySelector('#width').value) || null;
-    const height = parseFloat(document.querySelector('#height').value) || null;
+    const width = parseConstructionMeasurement(widthInput.value) || null;
+    const height = parseConstructionMeasurement(heightInput.value) || null;
 
     const squareFeet =
       width && height ? Number(((width * height) / 144).toFixed(2)) : null;
@@ -710,9 +837,8 @@ const estimatedPrice = calculateEstimatedPrice({
   glassType: glassTypeSelect.value,
   hardwareFinish: hardwareFinishSelect.value,
   squareFeet:
-  parseFloat(widthInput.value) > 0 &&
-  parseFloat(heightInput.value) > 0
-    ? (parseFloat(widthInput.value) * parseFloat(heightInput.value)) / 144
+  width > 0 && height > 0
+    ? (width * height) / 144
     : 0,
   quantity:
     parseInt(document.querySelector('#quantity').value, 10) || 1
@@ -737,9 +863,8 @@ console.log('ESTIMATED PRICE:', estimatedPrice);
   width: width,
   height: height,
   square_feet:
-  parseFloat(widthInput.value) > 0 &&
-  parseFloat(heightInput.value) > 0
-    ? (parseFloat(widthInput.value) * parseFloat(heightInput.value)) / 144
+  width > 0 && height > 0
+    ? (width * height) / 144
     : null,
 
   message: document.querySelector('#project').value.trim(),

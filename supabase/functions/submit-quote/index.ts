@@ -1,10 +1,39 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:8000',
+  'http://127.0.0.1:8000',
+  'https://brunos-glass-mirror.fittony85.workers.dev'
+]);
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || 'null',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
+function getCorsHeaders(origin: string) {
+  const headers = new Headers(corsHeaders);
+
+  if (ALLOWED_ORIGINS.has(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Vary', 'Origin');
+  }
+
+  return headers;
+}
+
+function withCors(response: Response, origin: string) {
+  const headers = new Headers(response.headers);
+  const allowedHeaders = getCorsHeaders(origin);
+
+  allowedHeaders.forEach((value, key) => headers.set(key, value));
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
 
 const BUCKET = 'quote-photos';
 const MAX_FILES = 5;
@@ -233,28 +262,33 @@ async function finalizeQuote(finalizeToken: string) {
 }
 
 Deno.serve(async (request) => {
+  const origin = request.headers.get('origin') || '';
+
   if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: getCorsHeaders(origin)
+    });
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405);
+    return withCors(jsonResponse({ error: 'Method not allowed.' }, 405), origin);
   }
 
   try {
     const body = await request.json();
 
     if (body.action === 'create') {
-      return await createQuote(body);
+      return withCors(await createQuote(body), origin);
     }
 
     if (body.action === 'finalize') {
-      return await finalizeQuote(body.finalizeToken);
+      return withCors(await finalizeQuote(body.finalizeToken), origin);
     }
 
-    return jsonResponse({ error: 'Unknown action.' }, 400);
+    return withCors(jsonResponse({ error: 'Unknown action.' }, 400), origin);
   } catch (error) {
     console.error('submit-quote error:', error);
-    return jsonResponse({ error: error instanceof Error ? error.message : 'Unexpected server error.' }, 500);
+    return withCors(jsonResponse({ error: error instanceof Error ? error.message : 'Unexpected server error.' }, 500), origin);
   }
 });

@@ -585,15 +585,31 @@
             </p>
 
 
-            <label for="service">
-              Service
-            </label>
+            <div class="service-picker">
+              <div class="service-picker-label">Service</div>
+              <div class="service-options" role="group" aria-label="Service">
+                <button class="choice-card service-card" type="button" data-select="service" data-value="Frameless Shower Doors">
+                  <span class="choice-card-index">01</span>
+                  <span class="choice-card-title">Frameless Shower Doors</span>
+                  <span class="choice-card-arrow" aria-hidden="true">↗</span>
+                </button>
+                <button class="choice-card service-card" type="button" data-select="service" data-value="Mirror">
+                  <span class="choice-card-index">02</span>
+                  <span class="choice-card-title">Mirror</span>
+                  <span class="choice-card-arrow" aria-hidden="true">↗</span>
+                </button>
+                <button class="choice-card service-card" type="button" data-select="service" data-value="Glass">
+                  <span class="choice-card-index">03</span>
+                  <span class="choice-card-title">Glass</span>
+                  <span class="choice-card-arrow" aria-hidden="true">↗</span>
+                </button>
+              </div>
 
-            <select
-              id="service"
-              name="service"
-              required
-            >
+              <select
+                id="service"
+                name="service"
+                required
+              >
 
               <option value="">
                 Select a service
@@ -611,7 +627,8 @@
                 Glass
               </option>
 
-            </select>
+              </select>
+            </div>
 
 
             <!-- PRODUCT -->
@@ -636,6 +653,7 @@
                 </option>
 
               </select>
+              <div class="choice-list" data-choice-list-for="product" role="group" aria-label="Product"></div>
 
             </div>
 
@@ -662,6 +680,7 @@
                 </option>
 
               </select>
+              <div class="choice-list" data-choice-list-for="door-type" role="group" aria-label="Door or enclosure type"></div>
 
             </div>
 
@@ -688,6 +707,7 @@
                 </option>
 
               </select>
+              <div class="choice-list" data-choice-list-for="glass-type" role="group" aria-label="Glass type"></div>
 
             </div>
 
@@ -730,6 +750,7 @@
                 </option>
 
               </select>
+              <div class="choice-list choice-list-compact" data-choice-list-for="hardware-finish" role="group" aria-label="Hardware finish"></div>
 
 
               <label for="handle-style">
@@ -758,32 +779,32 @@
                 </option>
 
               </select>
+              <div class="choice-list choice-list-compact" data-choice-list-for="handle-style" role="group" aria-label="Handle style"></div>
 
             </div>
 
 
-            <!-- QUANTITY -->
+            <div class="measurement-panel">
 
-            <label for="quantity">
-              Quantity
-            </label>
+              <div class="measurement-header">
+                <div>
+                  <p class="measurement-kicker">Project scale</p>
+                  <p class="measurement-title">Approximate measurements</p>
+                </div>
 
-            <input
-              id="quantity"
-              name="quantity"
-              type="number"
-              min="1"
-              step="1"
-              value="1"
-              required
-            />
-
-
-            <!-- MEASUREMENTS -->
-
-            <p class="measurement-title">
-              Approximate measurements
-            </p>
+                <div class="quantity-field">
+                  <label for="quantity">Quantity</label>
+                  <input
+                    id="quantity"
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value="1"
+                    required
+                  />
+                </div>
+              </div>
 
             <div class="measurement-fields">
 
@@ -796,10 +817,10 @@
                 <input
                   id="width"
                   name="width"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="60"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="60 1/4"
+                  autocomplete="off"
                 />
 
               </div>
@@ -814,13 +835,17 @@
                 <input
                   id="height"
                   name="height"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="72"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="72 1/8"
+                  autocomplete="off"
                 />
 
               </div>
+
+              </div>
+
+              <p class="measurement-note">Use whole inches or construction fractions such as 1/4, 1/8, or 1/16.</p>
 
             </div>
 
@@ -847,7 +872,10 @@
             </p>
 
 
-            <label for="name">
+            <div class="form-grid form-grid-contact">
+
+              <div class="form-field">
+                <label for="name">
               Name
             </label>
 
@@ -858,10 +886,12 @@
               autocomplete="name"
               placeholder="Your name"
               required
-            />
+                />
+              </div>
 
 
-            <label for="phone">
+              <div class="form-field">
+                <label for="phone">
               Phone
             </label>
 
@@ -872,10 +902,12 @@
               autocomplete="tel"
               placeholder="(954) 000-0000"
               required
-            />
+                />
+              </div>
 
 
-            <label for="email">
+              <div class="form-field">
+                <label for="email">
               Email
             </label>
 
@@ -886,10 +918,12 @@
               autocomplete="email"
               placeholder="you@example.com"
               required
-            />
+                />
+              </div>
 
 
-            <label for="city">
+              <div class="form-field">
+                <label for="city">
               City
             </label>
 
@@ -1003,7 +1037,10 @@
                 Other Florida City
               </option>
 
-            </select>
+                </select>
+              </div>
+
+            </div>
 
           </div>
 
@@ -1019,17 +1056,22 @@
             </p>
 
 
-            <label for="photos">
-              Upload photos
-            </label>
+            <div class="upload-field">
+              <label class="upload-zone" for="photos">
+                <span class="upload-icon" aria-hidden="true">+</span>
+                <span class="upload-title">Add project photos or videos</span>
+                <span class="upload-caption">Choose up to 5 files from your device</span>
+                <span class="upload-action">Browse files</span>
+              </label>
 
-            <input
-              id="photos"
-              name="photos"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
-              multiple
-            />
+              <input
+                id="photos"
+                name="photos"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+                multiple
+              />
+            </div>
 
 
             <p class="form-help">

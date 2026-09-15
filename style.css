@@ -60,17 +60,58 @@ em { font-family: var(--serif); font-weight: 500; }
 .service-item p { max-width: 500px; margin: 0; color: rgba(255,255,255,.52); font-size: 13px; }
 .service-arrow { color: var(--blue); font-size: 22px; }
 .work { background: var(--mist); }
-.work-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: 240px 240px; gap: 14px; }
-.work-card { min-height: 240px; color: var(--white); background: #799197; }
+.work-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: 205px 205px; gap: 14px; }
+
+.work-card { min-height: 205px; color: var(--white); background: #799197; }
 .work-card-tall { grid-row: span 2; }
 .work-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 35%, rgba(8,26,43,.85)); }
 .work-caption { position: absolute; z-index: 1; bottom: 23px; left: 25px; display: grid; gap: 5px; }
 .work-caption small { font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--blue); }
 .work-caption strong { font: 500 24px var(--serif); }
+.inspiration-gallery { background: #f5f7f5; }
+.inspiration-heading { display: grid; grid-template-columns: 1.2fr .8fr; align-items: end; gap: 80px; margin-bottom: 48px; }
+.inspiration-heading h2 { color: var(--navy); }
+.inspiration-intro { max-width: 360px; margin: 0 0 4px; color: #5c6b72; font-size: 16px; line-height: 1.8; }
+.inspiration-filters { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 28px; }
+.inspiration-filter { border: 1px solid #b8c6c2; border-radius: 999px; padding: 10px 15px; color: var(--navy); background: transparent; font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: background .2s ease, color .2s ease, border-color .2s ease; }
+.inspiration-filter:hover, .inspiration-filter:focus-visible, .inspiration-filter.is-active { border-color: var(--navy); color: var(--white); background: var(--navy); outline: 0; }
+.inspiration-grid { columns: 3 260px; column-gap: 14px; }
+.inspiration-card { position: relative; display: block; width: 100%; margin: 0 0 14px; padding: 0; break-inside: avoid; border: 0; background: #d9e0de; cursor: zoom-in; overflow: hidden; }
+.inspiration-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(8,26,43,.72)); opacity: .72; pointer-events: none; transition: opacity .25s ease; }
+.inspiration-card:hover::after, .inspiration-card:focus-visible::after { opacity: 1; }
+.inspiration-card img { display: block; width: 100%; height: auto; object-fit: cover; transition: transform .45s ease; }
+.inspiration-card:hover img, .inspiration-card:focus-visible img { transform: scale(1.025); }
+.inspiration-card-caption { position: absolute; right: 16px; bottom: 14px; left: 16px; z-index: 1; color: var(--white); font: 10px var(--mono); letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+.inspiration-cta { margin-top: 96px; padding: 52px 0 0; border-top: 1px solid rgba(8,26,43,.14); }
+.inspiration-cta h2 { margin-bottom: 30px; color: var(--navy); }
+.inspiration-lightbox { position: fixed; inset: 0; z-index: 10000; display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; align-items: center; gap: 18px; padding: 34px; background: rgba(8,26,43,.96); }
+.inspiration-lightbox[hidden] { display: none; }
+.inspiration-lightbox-figure { display: grid; max-width: min(1100px, 82vw); max-height: 90vh; place-items: center; justify-self: center; margin: 0; }
+.inspiration-lightbox-figure img { display: block; max-width: 100%; max-height: 82vh; width: auto; height: auto; object-fit: contain; }
+.inspiration-lightbox-figure figcaption { margin-top: 12px; color: rgba(255,255,255,.66); font: 10px var(--mono); letter-spacing: .08em; text-align: center; text-transform: uppercase; }
+.inspiration-lightbox-close, .inspiration-lightbox-prev, .inspiration-lightbox-next { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid rgba(255,255,255,.36); color: var(--white); background: transparent; font-size: 25px; line-height: 1; cursor: pointer; }
+.inspiration-lightbox-close { position: absolute; top: 20px; right: 24px; z-index: 1; }
+.inspiration-lightbox-prev { grid-column: 1; }
+.inspiration-lightbox-next { grid-column: 3; }
+.inspiration-lightbox-close:hover, .inspiration-lightbox-prev:hover, .inspiration-lightbox-next:hover { border-color: var(--blue); color: var(--blue); }
 .section-pale { background: #dfe5e1; }
 .shop-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 100px; }
 .shop-grid .large-copy { font-size: 16px; }
-.shop-image { min-height: 470px; background-color: #9aafb0; }
+.shop-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #9aafb0;
+}
+
+.shop-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
 .image-note { position: absolute; bottom: 24px; right: 25px; z-index: 1; font: 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
 .quote { background: var(--white); }
 .quote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; }
@@ -314,6 +355,7 @@ em { font-family: var(--serif); font-weight: 500; }
 .footer-inner { min-height: 105px; }
 .footer-inner p, .footer-inner > a:not(.brand) { margin: 0; color: rgba(255,255,255,.45); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
 @media (max-width: 760px) { .container { width: min(100% - 40px, 600px); } .site-header { position: absolute; } .header-inner { min-height: 74px; } .menu-toggle { display: grid; gap: 5px; padding: 8px 0 8px 8px; } .menu-toggle > span:not(.sr-only) { display: block; width: 25px; height: 1px; background: currentColor; } .site-nav { position: absolute; top: 74px; left: 0; right: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 12px 20px 20px; background: var(--navy); border-bottom: 1px solid var(--line); } .site-nav.is-open { display: flex; } .site-nav a { padding: 13px 0; } .site-nav .button { justify-content: center; margin-top: 8px; } .brand-name { font-size: 11px; } .hero { min-height: 680px; } .hero-content { padding-top: 75px; } h1 { font-size: clamp(52px, 15vw, 80px); } .hero-footer { bottom: 22px; } .hero-footer a { display: none; } .section-pad { padding: 85px 0; } .intro-grid, .quote-grid, .contact-grid, .shop-grid { grid-template-columns: 1fr; gap: 45px; } .section-heading { display: block; margin-bottom: 45px; } .section-heading > p { margin-top: 28px; } .service-item { grid-template-columns: 36px 1fr 25px; } .service-item h3 { font-size: 19px; } .service-item p { font-size: 12px; } .work-grid { grid-template-columns: 1fr 1fr; grid-template-rows: 290px 190px; } .work-card-tall { grid-row: span 2; } .work-card:nth-child(3) { grid-column: 2; } .work-caption { left: 16px; bottom: 16px; } .work-caption strong { font-size: 19px; } .shop-image { min-height: 350px; } .footer-inner { min-height: 150px; flex-wrap: wrap; padding: 25px 0; } .footer-inner p { order: 3; width: 100%; } }
+@media (max-width: 760px) { .inspiration-heading { grid-template-columns: 1fr; gap: 28px; } .inspiration-intro { font-size: 15px; } .inspiration-grid { columns: 2 150px; column-gap: 10px; } .inspiration-card { margin-bottom: 10px; } .inspiration-cta { margin-top: 68px; } .inspiration-lightbox { grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 8px; padding: 20px 12px; } .inspiration-lightbox-figure { max-width: calc(100vw - 80px); } .inspiration-lightbox-close { top: 12px; right: 12px; } .inspiration-lightbox-close, .inspiration-lightbox-prev, .inspiration-lightbox-next { width: 38px; height: 38px; font-size: 20px; } }
 /* =========================================
    QUOTE FORM — PROFESSIONAL STYLING
    ========================================= */

@@ -53,6 +53,7 @@
       >
         <a href="#services">Services</a>
         <a href="#work">Recent work</a>
+        <a href="#inspiration-gallery">Inspiration</a>
         <a href="#shop">Shop</a>
         <a href="#contact">Contact</a>
 
@@ -376,6 +377,46 @@
   </div>
 </div>
 
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         INSPIRATION GALLERY
+         ===================================================== -->
+
+    <section class="inspiration-gallery section-pad" id="inspiration-gallery">
+
+      <div class="container">
+
+        <div class="inspiration-heading">
+          <div>
+            <p class="eyebrow">Inspiration gallery</p>
+            <h2>Real projects.<br /><em>Real craftsmanship.</em></h2>
+          </div>
+
+          <p class="inspiration-intro">
+            Explore recent Bruno's Glass &amp; Mirror installations and discover what is possible with custom glass and mirror work.
+          </p>
+        </div>
+
+        <div class="inspiration-filters" role="group" aria-label="Inspiration gallery categories">
+          <button class="inspiration-filter is-active" type="button" data-gallery-filter="All" aria-pressed="true">All</button>
+          <button class="inspiration-filter" type="button" data-gallery-filter="Shower Enclosures" aria-pressed="false">Shower Enclosures</button>
+          <button class="inspiration-filter" type="button" data-gallery-filter="Custom Mirrors" aria-pressed="false">Custom Mirrors</button>
+          <button class="inspiration-filter" type="button" data-gallery-filter="Custom Glass" aria-pressed="false">Custom Glass</button>
+          <button class="inspiration-filter" type="button" data-gallery-filter="Commercial" aria-pressed="false">Commercial</button>
+        </div>
+
+        <div class="inspiration-grid" id="inspiration-grid"></div>
+
+        <div class="inspiration-cta">
+          <p class="eyebrow">Your next space</p>
+          <h2>Ready to create<br /><em>your next space?</em></h2>
+          <a class="button button-dark" href="#quote">Request a Quote <span aria-hidden="true">↗</span></a>
         </div>
 
       </div>
@@ -1168,6 +1209,16 @@
           alt=""
         />
 
+      </div>
+
+      <div class="inspiration-lightbox" id="inspiration-lightbox" hidden>
+        <button class="inspiration-lightbox-close" id="inspiration-lightbox-close" type="button" aria-label="Close inspiration image">×</button>
+        <button class="inspiration-lightbox-prev" id="inspiration-lightbox-prev" type="button" aria-label="Previous inspiration image">←</button>
+        <figure class="inspiration-lightbox-figure">
+          <img id="inspiration-lightbox-image" src="" alt="" />
+          <figcaption id="inspiration-lightbox-caption"></figcaption>
+        </figure>
+        <button class="inspiration-lightbox-next" id="inspiration-lightbox-next" type="button" aria-label="Next inspiration image">→</button>
       </div>
 
     </section>

@@ -236,6 +236,44 @@ em { font-family: var(--serif); font-weight: 500; }
   padding-bottom: 0;
 }
 
+.estimated-price-panel {
+  margin: 0 0 34px;
+  padding: 30px 28px 28px;
+  border: 1px solid rgba(8, 26, 43, .14);
+  background: linear-gradient(135deg, #f1f6f4, #e5efec);
+  text-align: center;
+}
+
+.estimated-price-label {
+  margin: 0 0 10px;
+  color: #537d85;
+  font: 11px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.estimated-price-value {
+  max-width: 100%;
+  margin: 0;
+  color: #7a878b;
+  font-family: var(--serif);
+  font-size: clamp(17px, 2.5vw, 25px);
+  line-height: 1.25;
+}
+
+.estimated-price-value.has-price {
+  color: var(--navy);
+  font-size: clamp(30px, 4vw, 48px);
+  letter-spacing: -.02em;
+}
+
+.estimated-price-note {
+  margin: 12px 0 0;
+  color: #7a878b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .quote-form .button {
   margin-top: 12px;
 }

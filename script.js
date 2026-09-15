@@ -735,6 +735,7 @@ if (
 const widthInput = document.querySelector('#width');
 const heightInput = document.querySelector('#height');
 const squareFeetResult = document.querySelector('#square-feet-result');
+const estimatedPriceValue = document.querySelector('#estimated-price-value');
 
 
 function calculateSquareFeet() {
@@ -793,6 +794,83 @@ function parseConstructionMeasurement(value) {
 
   return whole + (numerator / denominator);
 }
+
+function updateEstimatedPrice() {
+  if (!estimatedPriceValue) {
+    return;
+  }
+
+  const width = parseConstructionMeasurement(widthInput.value);
+  const height = parseConstructionMeasurement(heightInput.value);
+  const quantity = Number(document.querySelector('#quantity').value);
+  const projectFields = [
+    serviceSelect,
+    productSelect,
+    doorTypeSelect,
+    glassTypeSelect,
+    hardwareFinishSelect,
+    handleStyleSelect
+  ];
+  const missingRequiredProjectField = projectFields.some(
+    (field) => field.required && !field.value
+  );
+
+  if (
+    !serviceSelect.value ||
+    missingRequiredProjectField ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    estimatedPriceValue.textContent =
+      'Complete the project details to see your estimated price.';
+    estimatedPriceValue.classList.remove('has-price');
+    return;
+  }
+
+  const estimatedPrice = calculateEstimatedPrice({
+    service: serviceSelect.options[serviceSelect.selectedIndex].text.trim(),
+    glassType: glassTypeSelect.value,
+    hardwareFinish: hardwareFinishSelect.value,
+    squareFeet: (width * height) / 144,
+    quantity
+  });
+
+  if (!estimatedPrice) {
+    estimatedPriceValue.textContent =
+      'Complete the project details to see your estimated price.';
+    estimatedPriceValue.classList.remove('has-price');
+    return;
+  }
+
+  const currency = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  });
+  estimatedPriceValue.textContent = `${currency.format(estimatedPrice.low)} – ${currency.format(estimatedPrice.high)}`;
+  estimatedPriceValue.classList.add('has-price');
+}
+
+[
+  serviceSelect,
+  productSelect,
+  doorTypeSelect,
+  glassTypeSelect,
+  hardwareFinishSelect,
+  handleStyleSelect,
+  document.querySelector('#quantity'),
+  widthInput,
+  heightInput
+].forEach((field) => {
+  field?.addEventListener(
+    field === widthInput || field === heightInput ? 'input' : 'change',
+    updateEstimatedPrice
+  );
+});
 
 
 if (widthInput && heightInput && squareFeetResult) {

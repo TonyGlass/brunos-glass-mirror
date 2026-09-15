@@ -1117,3 +1117,126 @@ final_price: null,
     }
   });
 }
+
+// =====================================================
+// INSPIRATION GALLERY
+// =====================================================
+
+const inspirationImages = [
+  { file: 'tmp1x18qlnt.webp', category: 'Custom Glass', alt: 'Black framed glass enclosure with clear panels' },
+  { file: 'tmp8ogawz09.webp', category: 'Custom Mirrors', alt: 'Multi-panel bathroom mirror installation above a vanity' },
+  { file: 'tmpa6tg0twq.webp', category: 'Custom Mirrors', alt: 'Mirrored ceiling installation reflecting a bathroom interior' },
+  { file: 'tmpalrn5bjl.webp', category: 'Commercial', alt: 'Glass mirrored bar and display shelving installation' },
+  { file: 'tmpef8fn6l5.webp', category: 'Shower Enclosures', alt: 'Glass shower enclosure beside a freestanding bathtub' },
+  { file: 'tmprm_1dilf.webp', category: 'Shower Enclosures', alt: 'Three glass shower enclosure installations' },
+  { file: 'tmpt1njs01e.webp', category: 'Shower Enclosures', alt: 'Clear glass sliding shower enclosure' },
+  { file: 'WhatsApp Image 2026-08-15 at 12.33.52 PM.jpeg', category: 'Custom Mirrors', alt: 'Bathroom vanity with a large framed mirror' },
+  { file: 'WhatsApp Image 2026-08-18 at 12.17.55 PM.jpeg', category: 'Shower Enclosures', alt: 'Glass shower enclosure with dark framing and water view' },
+  { file: 'WhatsApp Image 2026-08-18 at 2.48.12 PM.jpeg', category: 'Shower Enclosures', alt: 'Clear shower enclosure with gold hardware in a marble bathroom' },
+  { file: 'WhatsApp Image 2026-09-11 at 2.21.31 PM.jpeg', category: 'Custom Mirrors', alt: 'Bathroom vanity with illuminated framed mirrors' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.05 PM.jpeg', category: 'Shower Enclosures', alt: 'Clear glass shower enclosure with a sliding door system' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.06 PM (3).jpeg', category: 'Shower Enclosures', alt: 'Glass shower enclosure with gold hardware and stone walls' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.06 PM.jpeg', category: 'Shower Enclosures', alt: 'Frameless glass shower enclosure with a stone interior' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.07 PM (5).jpeg', category: 'Shower Enclosures', alt: 'Spacious frameless shower enclosure with multiple glass panels' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.07 PM.jpeg', category: 'Shower Enclosures', alt: 'Large custom glass shower enclosure with open entry' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.08 PM (1).jpeg', category: 'Commercial', alt: 'Glass display enclosure over a bar cabinet' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.08 PM (5).jpeg', category: 'Commercial', alt: 'Large glass display enclosure in a finished interior' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.08 PM.jpeg', category: 'Commercial', alt: 'Glass display installation with shelving and cabinetry' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.43.09 PM (1).jpeg', category: 'Custom Mirrors', alt: 'Large wall mirror reflecting an arched bathroom interior' },
+  { file: 'WhatsApp Image 2026-09-11 at 5.48.41 PM.jpeg', category: 'Shower Enclosures', alt: 'Clear glass shower enclosure with a tiled interior' },
+  { file: 'WhatsApp Image 2026-09-14 at 1.18.42 PM.jpeg', category: 'Custom Mirrors', alt: 'Large bathroom mirror above a stone vanity' },
+  { file: 'WhatsApp Image 2026-09-14 at 3.48.36 PM.jpeg', category: 'Shower Enclosures', alt: 'Frameless glass shower enclosure in a tiled bathroom' }
+];
+
+const inspirationGrid = document.querySelector('#inspiration-grid');
+const inspirationLightbox = document.querySelector('#inspiration-lightbox');
+const inspirationLightboxImage = document.querySelector('#inspiration-lightbox-image');
+const inspirationLightboxCaption = document.querySelector('#inspiration-lightbox-caption');
+const inspirationLightboxClose = document.querySelector('#inspiration-lightbox-close');
+const inspirationLightboxPrevious = document.querySelector('#inspiration-lightbox-prev');
+const inspirationLightboxNext = document.querySelector('#inspiration-lightbox-next');
+let inspirationVisibleImages = inspirationImages;
+let inspirationLightboxIndex = 0;
+
+function inspirationImageUrl(file) {
+  return `images/inspiration/${encodeURIComponent(file).replaceAll('%2F', '/')}`;
+}
+
+function renderInspirationGallery(category = 'All') {
+  if (!inspirationGrid) {
+    return;
+  }
+
+  inspirationVisibleImages = category === 'All'
+    ? inspirationImages
+    : inspirationImages.filter((image) => image.category === category);
+
+  inspirationGrid.innerHTML = inspirationVisibleImages.map((image, index) => `
+    <button class="inspiration-card" type="button" data-inspiration-index="${index}" aria-label="Open ${image.alt}">
+      <img src="${inspirationImageUrl(image.file)}" alt="${image.alt}" loading="${index < 6 ? 'eager' : 'lazy'}" />
+      <span class="inspiration-card-caption">${image.category}</span>
+    </button>
+  `).join('');
+
+  inspirationGrid.querySelectorAll('[data-inspiration-index]').forEach((card) => {
+    card.addEventListener('click', () => openInspirationLightbox(Number(card.dataset.inspirationIndex)));
+  });
+}
+
+function openInspirationLightbox(index) {
+  inspirationLightboxIndex = index;
+  const image = inspirationVisibleImages[inspirationLightboxIndex];
+  if (!image || !inspirationLightbox) {
+    return;
+  }
+
+  inspirationLightboxImage.src = inspirationImageUrl(image.file);
+  inspirationLightboxImage.alt = image.alt;
+  inspirationLightboxCaption.textContent = `${image.category} / ${image.alt}`;
+  inspirationLightbox.hidden = false;
+  document.body.style.overflow = 'hidden';
+  inspirationLightboxClose.focus();
+}
+
+function closeInspirationLightbox() {
+  inspirationLightbox.hidden = true;
+  document.body.style.overflow = '';
+}
+
+function moveInspirationLightbox(direction) {
+  const total = inspirationVisibleImages.length;
+  inspirationLightboxIndex = (inspirationLightboxIndex + direction + total) % total;
+  openInspirationLightbox(inspirationLightboxIndex);
+}
+
+if (inspirationGrid && inspirationLightbox) {
+  renderInspirationGallery();
+
+  document.querySelectorAll('[data-gallery-filter]').forEach((filter) => {
+    filter.addEventListener('click', () => {
+      document.querySelectorAll('[data-gallery-filter]').forEach((button) => {
+        const isActive = button === filter;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+      renderInspirationGallery(filter.dataset.galleryFilter);
+    });
+  });
+
+  inspirationLightboxClose.addEventListener('click', closeInspirationLightbox);
+  inspirationLightboxPrevious.addEventListener('click', () => moveInspirationLightbox(-1));
+  inspirationLightboxNext.addEventListener('click', () => moveInspirationLightbox(1));
+  inspirationLightbox.addEventListener('click', (event) => {
+    if (event.target === inspirationLightbox) {
+      closeInspirationLightbox();
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (inspirationLightbox.hidden) {
+      return;
+    }
+    if (event.key === 'Escape') closeInspirationLightbox();
+    if (event.key === 'ArrowLeft') moveInspirationLightbox(-1);
+    if (event.key === 'ArrowRight') moveInspirationLightbox(1);
+  });
+}

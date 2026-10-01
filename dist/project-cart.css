@@ -1,0 +1,12 @@
+.quotation-page .project-cart { grid-column: 1 / -1; grid-row: 2; border: 1px solid #d6e1ed; padding: clamp(18px,4vw,32px); background: #f5f8fc; min-width: 0; }
+.project-cart h2 { font-family: var(--serif); font-size: 30px; }
+.project-cart p { line-height: 1.7; font-size: 13px; margin: 14px 0; }
+.project-cart ol { padding: 0; list-style: none; }
+.project-cart li { background: white; padding: 18px; margin: 16px 0; border: 1px solid #d6e1ed; overflow-wrap: anywhere; }
+.project-cart h3 { font-size: 17px; }
+.project-cart button { min-height: 48px; white-space: normal; }
+
+.quotation-page .wizard-step-panel.form-submit > .wizard-back { grid-row: 3; }
+.quotation-page .wizard-step-panel.form-submit > .estimated-price-panel { grid-row: 4; }
+.quotation-page .wizard-step-panel.form-submit > .submit-request-heading { grid-row: 5; }
+.quotation-page .wizard-step-panel.form-submit > button[type="submit"] { grid-row: 6; }

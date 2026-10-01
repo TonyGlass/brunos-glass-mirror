@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Architectural glass</title><desc id="desc">Neutral line illustration of architectural glass panels and an opening.</desc>
+  <rect width="640" height="420" fill="#f4f6f5"/><path d="M125 337V80h390v257M125 337h390" fill="none" stroke="#334c61" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M155 110h154v196H155zM329 110h154v196H329z" fill="#dcebf0" fill-opacity=".65" stroke="#6d8b9c" stroke-width="5"/><path d="m184 130 96 147m75-147 96 147" stroke="#fff" stroke-width="9" opacity=".8"/>
+  <path d="M123 355h394" stroke="#b58a48" stroke-width="4"/><text x="320" y="394" text-anchor="middle" fill="#52677a" font-family="sans-serif" font-size="18" letter-spacing="3">ARCHITECTURAL GLASS</text>
+</svg>

@@ -1,9 +1,16 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+import { normalizeProject, publicEstimate, quoteEstimateFields } from '../_shared/pricing-contract.mjs';
 
 const ALLOWED_ORIGINS = new Set([
   'http://localhost:8000',
   'http://127.0.0.1:8000',
-  'https://brunos-glass-mirror.fittony85.workers.dev'
+  'http://localhost:8787',
+  'http://127.0.0.1:8787',
+  'http://localhost:8765',
+  'http://127.0.0.1:8765',
+  'https://brunos-glass-mirror.english-academy-fl.workers.dev',
+  ...(Deno.env.get('ADDITIONAL_ALLOWED_ORIGINS') || '').split(',').map(origin=>origin.trim()).filter(Boolean)
 ]);
 
 const corsHeaders = {
@@ -52,6 +59,7 @@ const QUOTE_FIELDS = [
   'phone',
   'email',
   'city',
+  'installation_address',
   'service',
   'product',
   'door_type',
@@ -70,13 +78,20 @@ const QUOTE_FIELDS = [
   'status'
 ];
 
-const SUPABASE_SECRET_KEYS = JSON.parse(
-  Deno.env.get('SUPABASE_SECRET_KEYS')!
-);
+function getServiceKey() {
+  const secretKeys = Deno.env.get('SUPABASE_SECRET_KEYS');
+  if (secretKeys) {
+    try { const key=JSON.parse(secretKeys).default; if(typeof key==='string'&&key)return key; }
+    catch { /* Use the platform-provided service key below. */ }
+  }
+  const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if(!key)throw new Error('Supabase service key is not configured.');
+  return key;
+}
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
-  SUPABASE_SECRET_KEYS['default']
+  getServiceKey()
 );
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -164,7 +179,8 @@ function sanitizeFileName(name: string) {
   return `${crypto.randomUUID()}.${extension.replace(/[^a-z0-9]/g, '')}`;
 }
 
-async function createQuote(body: { quote: Record<string, unknown>; files: Array<{ name: string; size: number; type: string }> }) {
+async function createQuote(body: { quote: Record<string, unknown>; pricing?: {revision?:number; counts?:Record<string,number>; enduroShield?:boolean; mirrorFrame?:boolean; customQuote?:boolean}; files: Array<{ name: string; size: number; type: string }> }) {
+  if (!Deno.env.get('QUOTE_UPLOAD_TOKEN_SECRET')) return jsonResponse({error:'Quote submission is temporarily unavailable.'},503);
   const files = body.files || [];
 
   if (files.length > MAX_FILES) {
@@ -183,10 +199,29 @@ async function createQuote(body: { quote: Record<string, unknown>; files: Array<
       .map((field) => [field, body.quote[field]])
   );
 
+  // Recompute automatic estimates using trusted central configuration; custom requests are stored without invented prices.
+  if (body.pricing?.customQuote === true) {
+    if (!quoteData.product || typeof quoteData.product !== 'string') return jsonResponse({error:'Select the custom service requested.'},400);
+    Object.assign(quoteData,{estimated_price:null,estimated_price_low:null,estimated_price_high:null,final_price:null,status:'New'});
+  } else {
+    const project = normalizeProject({service:quoteData.service, glassType:quoteData.glass_type,
+      width:quoteData.width, height:quoteData.height, quantity:quoteData.quantity, counts:body.pricing?.counts, enduroShield:body.pricing?.enduroShield, mirrorFrame:body.pricing?.mirrorFrame});
+    const {data:pricing,error:pricingError} = await supabaseAdmin.from('quote_pricing_config')
+      .select('config,revision').eq('id',1).maybeSingle();
+    if (pricingError) throw pricingError;
+    const estimate = publicEstimate(project,pricing);
+    if (!body.pricing || body.pricing.revision !== estimate.revision) {
+      return jsonResponse({error:'Pricing changed. Review the updated estimate and submit again.', estimate},409);
+    }
+    Object.assign(quoteData, quoteEstimateFields(estimate), {square_feet:project.squareFeet, status:'New'});
+  }
+
+  const accessCode = encodeBase64Url(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+  const accessCodeHash = await hashAccessCode(accessCode);
   const { data: quote, error: quoteError } = await supabaseAdmin
     .from('quotes')
-    .insert([{ ...quoteData, photo_paths: [] }])
-    .select('id')
+    .insert([{ ...quoteData, photo_paths: [], tracking_token_hash: accessCodeHash }])
+    .select('id,tracking_number')
     .single();
 
   if (quoteError) {
@@ -196,6 +231,7 @@ async function createQuote(body: { quote: Record<string, unknown>; files: Array<
   const paths = files.map((file) => `quotes/${quote.id}/${sanitizeFileName(file.name)}`);
   const uploads = [];
 
+  try {
   for (const path of paths) {
     const { data, error } = await supabaseAdmin.storage
       .from(BUCKET)
@@ -214,7 +250,90 @@ async function createQuote(body: { quote: Record<string, unknown>; files: Array<
     expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000
   });
 
-  return jsonResponse({ uploads, finalizeToken });
+  return jsonResponse({ uploads, finalizeToken, trackingNumber: quote.tracking_number, accessCode });
+  } catch {
+    // The request already exists. Return its one-time credentials even if upload
+    // preparation failed, so the customer is not encouraged to create a duplicate.
+    return jsonResponse({uploads:[], finalizeToken:null, trackingNumber:quote.tracking_number, accessCode,
+      uploadPreparationError:'Request received, but attachments could not be prepared. Contact Bruno before submitting again.'},201);
+  }
+}
+
+async function hashAccessCode(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function publicProject(quote: Record<string, any>) {
+  const published = Boolean(quote.final_quote_sent_at);
+  const finalPrice = published ? Number(quote.final_price) : null;
+  const paid = published && quote.amount_paid != null ? Number(quote.amount_paid) : null;
+  return {
+    orderNumber: quote.tracking_number,
+    projectType: quote.service || quote.product || 'Glass project',
+    status: quote.project_status || 'Status not assigned',
+    createdAt: quote.created_at,
+    measurementCompletedAt: quote.measurement_completed_at,
+    verifiedMeasurements: quote.measurement_completed_at ? { width: quote.verified_width, height: quote.verified_height } : null,
+    installationStatus: quote.installation_status ?? 'Status not recorded',
+    installationScheduledAt: quote.installation_scheduled_at,
+    installationCompletedAt: quote.installation_completed_at,
+    preliminaryEstimate: quote.estimated_price == null ? null : Number(quote.estimated_price),
+    preliminaryEstimateRange: quote.estimated_price_low == null || quote.estimated_price_high == null ? null : {
+      low: Number(quote.estimated_price_low), high: Number(quote.estimated_price_high) + 150
+    },
+    finalQuote: published ? {
+      status: quote.final_quote_accepted_at ? 'Accepted' : 'Published',
+      price: finalPrice,
+      scope: quote.final_quote_scope,
+      quoteDate: quote.final_quote_date,
+      expiresAt: quote.final_quote_expires_at,
+      publishedAt: quote.final_quote_sent_at,
+      acceptedAt: quote.final_quote_accepted_at
+    } : { status: 'Not published' },
+    payment: published ? {
+      requiredToCommence: finalPrice * 0.5,
+      received: paid,
+      remainingBalance: paid == null ? null : Math.max(0, finalPrice - paid),
+      paymentDate: quote.payment_date,
+      verifiedAt: quote.payment_verified_at
+    } : { status: 'Shown after Bruno publishes the Final Quote' }
+  };
+}
+
+async function customerTrack(body: Record<string, unknown>) {
+  const orderNumber = typeof body.orderNumber === 'string' ? body.orderNumber.trim().toUpperCase() : '';
+  const accessCode = typeof body.accessCode === 'string' ? body.accessCode.trim() : '';
+  if (!/^BGM-\d{4}-[0-9A-F]{5,}$/.test(orderNumber) || accessCode.length < 32 || accessCode.length > 100) {
+    return jsonResponse({ error: 'We could not verify that order number and access code. Check both and try again.' }, 404);
+  }
+  const tokenHash = await hashAccessCode(accessCode);
+  const { data, error } = await supabaseAdmin.from('quotes')
+    .select('tracking_number,tracking_token_hash,created_at,service,product,project_status,measurement_completed_at,verified_width,verified_height,installation_status,installation_scheduled_at,installation_completed_at,estimated_price,estimated_price_low,estimated_price_high,final_price,final_quote_sent_at,final_quote_scope,final_quote_date,final_quote_expires_at,final_quote_accepted_at,amount_paid,payment_date,payment_verified_at')
+    .eq('tracking_number', orderNumber).eq('tracking_token_hash', tokenHash).maybeSingle();
+  if (error) throw error;
+  if (!data) return jsonResponse({ error: 'We could not verify that order number and access code. Check both and try again.' }, 404);
+  return jsonResponse({ project: publicProject(data) });
+}
+
+async function acceptFinalQuote(body: Record<string, unknown>) {
+  const orderNumber = typeof body.orderNumber === 'string' ? body.orderNumber.trim().toUpperCase() : '';
+  const accessCode = typeof body.accessCode === 'string' ? body.accessCode.trim() : '';
+  if (!/^BGM-\d{4}-[0-9A-F]{5,}$/.test(orderNumber) || accessCode.length < 32 || accessCode.length > 100) {
+    return jsonResponse({ error: 'We could not verify that order number and access code.' }, 404);
+  }
+  const tokenHash = await hashAccessCode(accessCode);
+  const { data, error } = await supabaseAdmin.from('quotes').select('id,tracking_number,tracking_token_hash,final_quote_sent_at,final_quote_expires_at,final_quote_accepted_at')
+    .eq('tracking_number', orderNumber).eq('tracking_token_hash', tokenHash).maybeSingle();
+  if (error) throw error;
+  if (!data || !data.final_quote_sent_at) return jsonResponse({ error: 'No published Final Quote is available to accept.' }, 409);
+  if (!data.final_quote_accepted_at && data.final_quote_expires_at && data.final_quote_expires_at < new Date().toISOString().slice(0,10)) return jsonResponse({ error: 'This Final Quote has expired. Contact Bruno’s Glass for an updated quote.' }, 409);
+  if (!data.final_quote_accepted_at) {
+    const { error: updateError } = await supabaseAdmin.from('quotes').update({final_quote_accepted_at:new Date().toISOString(),status:'Approved',project_status:'Final Quote Accepted'})
+      .eq('id',data.id).not('final_quote_sent_at','is',null);
+    if (updateError) throw updateError;
+  }
+  return customerTrack(body);
 }
 
 async function finalizeQuote(finalizeToken: string) {
@@ -285,6 +404,9 @@ Deno.serve(async (request) => {
     if (body.action === 'finalize') {
       return withCors(await finalizeQuote(body.finalizeToken), origin);
     }
+
+    if (body.action === 'track') return withCors(await customerTrack(body), origin);
+    if (body.action === 'accept-final-quote') return withCors(await acceptFinalQuote(body), origin);
 
     return withCors(jsonResponse({ error: 'Unknown action.' }, 400), origin);
   } catch (error) {

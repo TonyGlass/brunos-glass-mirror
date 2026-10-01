@@ -9,11 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="project-workflow.css" />
 </head>
-<body>
+<body class="workflow-admin">
   <main class="admin-shell">
     <section class="login-panel" id="login-panel" aria-labelledby="login-title">
-      <a class="admin-brand" href="index.html">Bruno's <strong>Glass &amp; Mirror</strong></a>
+      <a class="admin-brand" href="index.html"><img src="images/brunos-glass-mirror-logo.png" width="763" height="219" alt="Bruno's Glass &amp; Mirror" /></a>
       <p class="eyebrow">Private workspace</p>
       <h1 id="login-title">Quote desk</h1>
       <p class="panel-copy">Sign in to manage customer requests and project follow-up.</p>
@@ -22,7 +23,7 @@
         <input id="login-email" type="email" autocomplete="username" required />
         <label for="login-password">Password</label>
         <input id="login-password" type="password" autocomplete="current-password" required />
-        <button class="button button-accent" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+        <button class="button button-accent" type="submit">Sign in <span aria-hidden="true">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â€</span></button>
       </form>
       <p class="form-status" id="login-status" role="status" aria-live="polite"></p>
     </section>
@@ -30,8 +31,8 @@
     <section class="crm-panel" id="crm-panel" hidden>
       <header class="crm-header">
         <div>
-          <p class="eyebrow">Bruno's private workspace</p>
-          <h1>Quote desk</h1>
+          <a class="admin-brand" href="index.html"><img src="images/brunos-glass-mirror-logo.png" width="763" height="219" alt="Bruno's Glass &amp; Mirror" /></a><p class="eyebrow">Private project workspace</p>
+          <h1>Projects &amp; installations</h1>
         </div>
         <button class="button button-quiet" id="sign-out" type="button">Sign out</button>
       </header>
@@ -43,7 +44,16 @@
         </div>
         <button class="button button-dark" id="refresh-quotes" type="button">Refresh</button>
       </div>
-      <p class="form-status" id="crm-status" role="status" aria-live="polite"></p>
+      <details class="pricing-settings" aria-labelledby="pricing-settings-title"><summary>Customer selling prices</summary>
+        <div class="pricing-settings-heading"><div><p class="section-kicker">Central pricing</p><h2 id="pricing-settings-title">Customer selling prices ($/sq ft)</h2></div><span class="settings-badge">Admin only</span></div>
+        <p class="settings-warning">Glass and Mirror are separate approved catalogs. Selling estimates use square feet times the selected rate; Glass EnduroShield adds $7/sq ft. Mirror Metal / Frame is an optional separate $15/sq ft line. No additional margin or unlisted charges are applied.</p>
+        <div class="central-pricing-state" role="status" aria-live="polite"><strong id="central-pricing-state">Central pricing - Sign in to load</strong><span id="central-pricing-meta">No central configuration loaded.</span><span id="central-pricing-draft" hidden>Unsaved changes - select Save selling prices.</span></div>
+        <form id="pricing-settings-form" class="pricing-settings-form"><div id="customer-selling-rates"></div>
+          <div class="settings-field"><label for="enduro-rate">EnduroShield add-on ($/sq ft)</label><input id="enduro-rate" name="enduroShieldRate" type="number" min="0" step="0.01" required /></div>
+          <p class="pricing-readiness" id="pricing-readiness" role="status">Enter the confirmed customer prices, then save centrally.</p><div class="settings-actions"><button class="button button-accent" id="save-selling-prices" type="button">Save selling prices</button><button class="button button-quiet" id="reload-pricing-settings" type="button">Reload central pricing</button><button class="button button-quiet" id="reset-pricing-settings" type="button">Load confirmed selling rates</button></div>
+          <p class="form-status" id="pricing-settings-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>      <p class="form-status" id="crm-status" role="status" aria-live="polite"></p>
 
       <div class="quotes-layout">
         <section class="quotes-list-panel" aria-label="Quotes">
@@ -53,7 +63,7 @@
                 <tr>
                   <th>Client</th>
                   <th>Service</th>
-                  <th>Estimate</th>
+                  <th>Customer range</th>
                   <th>Status</th>
                   <th><span class="sr-only">Open</span></th>
                 </tr>
@@ -61,7 +71,8 @@
               <tbody id="quotes-body"></tbody>
             </table>
           </div>
-          <p class="empty-state" id="empty-state" hidden>No quotes have been submitted yet.</p>
+          <p class="empty-state" id="empty-state" hidden>No records were returned by the quote API. Use Refresh to check again.</p>
+          <p class="estimate-range-note">Customer range is calculated for display from the saved central estimate; it is not a stored price or a pricing-engine change.</p>
         </section>
 
         <aside class="quote-detail" id="quote-detail" aria-live="polite">
@@ -73,7 +84,9 @@
       </div>
     </section>
   </main>
+  <script src="runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="project-workflow.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

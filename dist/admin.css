@@ -113,3 +113,70 @@ h2 { margin-bottom: 0; color: var(--navy); font: 500 28px/1.1 var(--serif); }
   .detail-fields, .edit-grid { grid-template-columns: 1fr; }
   .detail-field.full, .edit-grid .button { grid-column: auto; }
 }
+
+.pricing-config-note { margin: 12px 0 20px; padding: 16px 18px; border: 1px solid var(--line); color: var(--muted); background: rgba(251,252,250,.82); font-size: 12px; line-height: 1.65; }
+.pricing-config-note strong { color: var(--navy); }
+.pricing-config-note p { margin: 6px 0 0; }
+.pricing-config-note a { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+
+.pricing-settings { margin: 18px 0 28px; padding: 22px; border: 1px solid var(--line); background: rgba(251,252,250,.9); }
+.pricing-settings-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.pricing-settings-heading h2 { margin: 0; color: var(--navy); font: 500 25px var(--serif); }
+.settings-badge { padding: 5px 9px; border: 1px solid #c5d3cf; color: #537d85; font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.settings-warning { padding: 12px 14px; color: #705b30; background: #faf4e7; font-size: 12px; }
+.pricing-settings-form { display: grid; gap: 10px; }
+.selling-rate-group { margin: 14px 0 2px; padding-bottom: 7px; border-bottom: 1px solid var(--line); color: var(--navy); font: 600 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.settings-field { display: grid; grid-template-columns: minmax(170px,1fr) 150px; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid #e5ebe8; }
+.settings-field label, .settings-cost-row > span { color: var(--ink); font-size: 12px; }
+.settings-field input, .settings-cost-row input { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid #d2ddda; background: white; }
+.settings-cost-row { display: grid; grid-template-columns: minmax(160px,1fr) repeat(2, minmax(100px,.45fr)); align-items: end; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e5ebe8; }
+.settings-cost-row label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+#customer-selling-rates .settings-cost-row { grid-template-columns: minmax(160px,1fr) minmax(100px,.45fr); }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 12px; }
+.settings-actions .button { cursor: pointer; }
+@media (max-width: 680px) { .pricing-settings { padding: 15px; } .settings-cost-row { grid-template-columns: 1fr 1fr; } .settings-cost-row > span { grid-column: 1 / -1; } .settings-field { grid-template-columns: 1fr 120px; } }
+
+.pricing-table-details { margin: 12px 0; border: 1px solid #e3e9e6; background: #fff; }
+.pricing-table-details summary { padding: 14px; color: var(--navy); font-size: 13px; font-weight: 700; cursor: pointer; }
+.pricing-table-details > div { padding: 0 14px 12px; max-height: 430px; overflow: auto; }
+.pricing-table-details .settings-cost-row { grid-template-columns: minmax(170px,1fr) repeat(2, minmax(90px,.4fr)); }
+
+/* Internal workflow shell; existing pricing controls retain their behavior. */
+.workflow-admin { --navy: #062148; --ink: #1a304c; --muted: #64748a; --line: #dce4ed; --white: #fff; background: #f4f6f9; }
+.workflow-admin .admin-brand { display: inline-flex; padding: 10px 16px; background: white; border-radius: 3px; margin-bottom: 22px; }
+.workflow-admin .admin-brand img { display: block; width: 200px; max-width: 100%; height: auto; }
+.workflow-admin .crm-panel { width: min(1440px, calc(100% - 48px)); padding-top: 24px; }
+.workflow-admin .crm-header { margin: -24px -24px 0; padding: 28px 32px; background: var(--navy); color: white; border-radius: 0 0 5px 5px; align-items: center; }
+.workflow-admin .crm-header h1 { color: white; font-size: clamp(30px, 4vw, 48px); }
+.workflow-admin .crm-header .eyebrow { color: #c1d0e1; margin: 0 0 10px; }
+.workflow-admin .crm-header .button { color: white; border-color: #7388a4; }
+.workflow-admin .quotes-layout { grid-template-columns: minmax(250px, .7fr) minmax(0, 2fr); gap: 22px; }
+.workflow-admin .quote-detail { padding: 28px; min-width: 0; border-radius: 5px; background: white; box-shadow: 0 12px 40px #06214805; }
+.workflow-admin .quotes-list-panel { border-radius: 5px; background: white; overflow: hidden; }
+.workflow-admin .quotes-table { min-width: 0; }
+.workflow-admin .quotes-table thead { display: none; }
+.workflow-admin .quotes-table tr { display: grid; grid-template-columns: 1fr auto; padding: 16px; border-bottom: 1px solid var(--line); }
+.workflow-admin .quotes-table td { border: 0; padding: 5px 0; min-width: 0; overflow-wrap: anywhere; }
+.workflow-admin .quotes-table td:first-child { grid-column: 1 / -1; }
+.workflow-admin .quotes-table td:nth-child(3) { text-align: right; white-space: normal; }
+.workflow-admin .quotes-table td:last-child { text-align: right; }
+.workflow-admin .row-link { padding: 12px; min-height: 44px; }
+.workflow-admin .status-badge { color: var(--navy); border-color: #c8d6e6; background: #f0f5fa; white-space: normal; line-height: 1.6; }
+.workflow-admin .pricing-settings { border-radius: 4px; background: white; }
+.workflow-admin .pricing-settings > summary { padding: 2px; color: var(--navy); cursor: pointer; font-size: 14px; font-weight: 600; }
+.workflow-admin .pricing-settings[open] > summary { margin-bottom: 24px; }
+.workflow-admin .button { min-height: 46px; border-radius: 3px; }
+.workflow-admin .button-accent { background: var(--navy); color: white; }
+.workflow-admin .detail-header { gap: 16px; }
+.workflow-admin .detail-actions { margin-top: 18px; }
+.workflow-admin :is(button,a,input,select,textarea,summary):focus-visible { outline: 3px solid #7699c0; outline-offset: 3px; }
+@media(max-width: 1000px) { .workflow-admin .quotes-layout { grid-template-columns: 1fr; } .workflow-admin .quotes-table tr { grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: center; } .workflow-admin .quotes-table td:first-child { grid-column: auto; } }
+@media(max-width: 600px) { .workflow-admin .crm-panel { width: calc(100% - 28px); } .workflow-admin .crm-header { margin-inline: -14px; padding: 24px 20px; align-items: start; } .workflow-admin .quote-detail { padding: 18px 14px; } .workflow-admin .quotes-table tr { grid-template-columns: 1fr auto; } .workflow-admin .quotes-table td:first-child { grid-column: 1 / -1; } .workflow-admin .pricing-settings { padding: 16px; } .workflow-admin .detail-header { flex-direction: column; } }
+
+#pricing-missing-fields { grid-column: 1 / -1; min-width: 0; }
+.central-pricing-state { display: grid; gap: 8px; padding: 18px; margin: 18px 0; border: 1px solid #c8d6e6; background: #f0f5fa; color: var(--navy); overflow-wrap: anywhere; }
+.central-pricing-state span { font-size: 13px; }
+#central-pricing-draft { font-weight: 600; }
+.pricing-readiness { grid-column: 1 / -1; padding: 14px; border-left: 3px solid #a77c37; background: #faf6ed; overflow-wrap: anywhere; }
+#pricing-missing-fields button { white-space: normal; overflow-wrap: anywhere; text-align: left; padding: 8px; min-height: 44px; border: 0; background: transparent; color: #123f70; cursor: pointer; text-decoration: underline; }
+.estimate-range-note { margin:12px 0 0; color:#647281; font-size:11px; line-height:1.6; }

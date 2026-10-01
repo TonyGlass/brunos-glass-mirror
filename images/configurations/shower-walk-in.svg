@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Fixed panel walk-in shower</title><desc id="desc">Neutral diagram showing a fixed glass panel with an open walk-in entry.</desc>
+  <rect width="640" height="420" fill="#f4f6f5"/><path d="M145 335V85h350v250M145 335h185m80 0h85" fill="none" stroke="#334c61" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M180 110h265v190H180z" fill="#dcebf0" fill-opacity=".64" stroke="#6d8b9c" stroke-width="5"/><path d="M185 300h54m-2 0V120" stroke="#b58a48" stroke-width="6"/>
+  <path d="M348 318h73" stroke="#b58a48" stroke-width="4" stroke-dasharray="7 8"/><text x="385" y="285" fill="#52677a" font-family="sans-serif" font-size="16">OPEN ENTRY</text>
+  <path d="M143 350h354" stroke="#b58a48" stroke-width="4"/><text x="320" y="394" text-anchor="middle" fill="#52677a" font-family="sans-serif" font-size="18" letter-spacing="3">LAYOUT DIAGRAM · NOT TO SCALE</text>
+</svg>

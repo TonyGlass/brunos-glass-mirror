@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Sliding shower door layout</title><desc id="desc">Neutral diagram with two overlapping sliding shower glass panels.</desc>
+  <rect width="640" height="420" fill="#f4f6f5"/><path d="M110 345V70h420v275M110 345h420" fill="none" stroke="#334c61" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M145 96h180v220H145zM315 96h180v220H315z" fill="#dcebf0" fill-opacity=".64" stroke="#6d8b9c" stroke-width="5"/>
+  <path d="M170 204h135M470 204H335" stroke="#b58a48" stroke-width="6"/><path d="m294 192 14 12-14 12m52-24-14 12 14 12" fill="none" stroke="#b58a48" stroke-width="5"/>
+  <path d="M108 356h424" stroke="#b58a48" stroke-width="4"/><text x="320" y="394" text-anchor="middle" fill="#52677a" font-family="sans-serif" font-size="18" letter-spacing="3">LAYOUT DIAGRAM · NOT TO SCALE</text>
+</svg>

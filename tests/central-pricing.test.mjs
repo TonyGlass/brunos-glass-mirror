@@ -48,10 +48,10 @@ test('Admin save, fresh sessions, public projection, denial and optimistic concu
     const b=await (await call({action:'estimate',project},'another-device')).json();
     assert.deepEqual(a,b);
     assert.equal(a.estimate.complete,true);
-    assert.deepEqual(Object.keys(a.estimate).sort(),['complete','high','low','revision']);
+    assert.deepEqual(Object.keys(a.estimate).sort(),['baseHigh','baseLow','complete','estimateFactor','high','low','revision']);
     assert.equal(JSON.stringify(a).includes('profitMargin'),false);
     const calc=calculateEstimatedPrice(normalizeProject(project),fixture());
-    assert.equal(a.estimate.low,calc.low);assert.equal(a.estimate.high,calc.high);
+    assert.equal(a.estimate.baseLow,calc.low);assert.equal(a.estimate.baseHigh,calc.low);assert.equal(a.estimate.low,calc.low);assert.equal(a.estimate.high,Math.round(calc.low*1.1*100)/100);
     assert.equal(quoteEstimateFields(a.estimate).final_price,null);
   }
 });
@@ -69,8 +69,7 @@ test('unknown costs stay unavailable; invalid costs never become zero',()=>{
 test('approved Glass and Mirror catalogs use exact area and supported optional charges',()=>{
   const cases=[
     ['Clear Glass - 3/8',45],['Low-Iron Glass - 3/8',60],['Reeded / Moru - 3/8',80],
-    ['Satin Acid-Etched - 3/8',75],['Satin Acid-Etched Low-Iron - 3/8',120],
-    ['Clear Glass - 1/2',55],['Low-Iron Glass - 1/2',70]
+    ['Satin Acid-Etched - 3/8',75],['Satin Acid-Etched Low-Iron - 3/8',120]
   ];
   for(const [glassType,rate] of cases){
     const result=calculateEstimatedPrice({service:'Shower Doors',glassType,squareFeet:1,quantity:1,counts:{hinges:99,handles:22}},confirmedRates);
@@ -84,22 +83,26 @@ test('approved Glass and Mirror catalogs use exact area and supported optional c
   assert.throws(()=>normalizeProject({service:'Glass',glassType:'Clear Glass - 1/4',width:60,height:96,quantity:1}),/approved automatic-pricing catalog/);
   assert.throws(()=>normalizeProject({service:'Glass',glassType:'Low-Iron Glass - 1/4',width:60,height:96,quantity:1}),/approved automatic-pricing catalog/);
   assert.throws(()=>normalizeProject({service:'Glass',glassType:'Clear Glass - 5/8',width:60,height:96,quantity:1}),/approved automatic-pricing catalog/);
+  assert.throws(()=>normalizeProject({service:'Glass',glassType:'Clear Glass - 1/2',width:60,height:96,quantity:1}),/approved automatic-pricing catalog/);
+  assert.throws(()=>normalizeProject({service:'Glass',glassType:'Other',width:60,height:96,quantity:1}),/approved automatic-pricing catalog/);
   const glassProject={service:'Glass',glassType:'Low-Iron Glass - 3/8',width:60,height:72,quantity:1,enduroShield:false};
   const glassNormalized=normalizeProject(glassProject);
   assert.equal(glassNormalized.squareFeet,30);
   const glassEstimate=publicEstimate(glassProject,{config:confirmedRates,revision:2});
-  assert.equal(glassEstimate.low,1800);assert.equal(glassEstimate.high,1800);
-  assert.equal(glassEstimate.low+150,1950);
+  assert.equal(glassEstimate.baseLow,1800);assert.equal(glassEstimate.baseHigh,1800);
+  assert.equal(glassEstimate.low,1800);assert.equal(glassEstimate.high,1980);assert.equal(glassEstimate.estimateFactor,1.1);
   const brunoExample=normalizeProject({service:'Mirror',glassType:'Clear Mirror - 1/4',width:60,height:96,quantity:1,mirrorFrame:false});
   assert.equal(brunoExample.squareFeet,40);
   const clearEstimate=calculateEstimatedPrice(brunoExample,confirmedRates);
   assert.equal(clearEstimate.low,1800);assert.equal(clearEstimate.high,1800);
-  assert.equal(clearEstimate.low+150,1950);
+  const pricedMirror=publicEstimate({service:'Mirror',glassType:'Clear Mirror - 1/4',width:60,height:96,quantity:1},{config:confirmedRates,revision:3});
+  assert.equal(pricedMirror.baseLow,1800);assert.equal(pricedMirror.low,1800);assert.equal(pricedMirror.high,1980);
   assert.equal(clearEstimate.breakdown.frame,0);
   const framed=normalizeProject({service:'Mirror',glassType:'Clear Mirror - 1/4',width:60,height:96,quantity:1,mirrorFrame:true});
   const framedEstimate=publicEstimate({...framed},{config:confirmedRates,revision:2});
   assert.deepEqual(framedEstimate.breakdown,{material:1800,frame:600,enduroShield:0});
-  assert.equal(framedEstimate.low,2400);assert.equal(framedEstimate.high+150,2550);
+  assert.equal(framedEstimate.baseLow,2400);assert.equal(framedEstimate.baseHigh,2400);
+  assert.equal(framedEstimate.low,2400);assert.equal(framedEstimate.high,2640);
   assert.equal(confirmedRates.profitMargin,null);
   const project={service:'Shower Doors',glassType:'Low-Iron Glass - 3/8',width:60,height:72,quantity:1,counts:{hinges:3}};
   const area=normalizeProject(project).squareFeet;
@@ -111,8 +114,10 @@ test('approved Glass and Mirror catalogs use exact area and supported optional c
   assert.deepEqual(coated.breakdown,{material:1800,frame:0,enduroShield:210});
   const incomplete=normalizePricingConfig({pricingModel:'selling-rates-v1',enduroShieldRate:7,finalSellingRates:{'low-iron-glass-3-8':60}});
   assert.equal(calculateEstimatedPrice({...normalizeProject(project),enduroShield:false},incomplete).low,1800);
-  assert.equal(quoteEstimateFields({complete:true,low:1800,high:1800}).estimated_price,1800);
-  assert.equal(quoteEstimateFields({complete:true,low:1800,high:1800}).final_price,null);
+  assert.deepEqual(quoteEstimateFields({complete:true,low:1980,high:2178}).estimated_price,1980);
+  assert.deepEqual(quoteEstimateFields({complete:true,low:1980,high:2178}).estimated_price_low,1980);
+  assert.deepEqual(quoteEstimateFields({complete:true,low:1980,high:2178}).estimated_price_high,2178);
+  assert.deepEqual(quoteEstimateFields({complete:true,low:1980,high:2178}).final_price,null);
 });
 
 test('customer catalogs are project-specific and frame controls are Mirror-only',()=>{
@@ -122,14 +127,17 @@ test('customer catalogs are project-specific and frame controls are Mirror-only'
     assert.ok(source,`${name} exists`);
     return [...source.matchAll(/\['([^']+)','([^']+)'\]/g)].map(([,value,label])=>({value,label}));
   };
-  assert.deepEqual(catalog('APPROVED_GLASS_OPTIONS').map(item=>item.label),[
+  assert.deepEqual(catalog('APPROVED_GLASS_OPTIONS').slice(0,-1).map(item=>item.label),[
     '3/8" Clear Glass','3/8" Low Iron Glass','3/8" Reeded Glass','3/8" Acid Etched Glass',
-    '3/8" Low Iron Acid Etched Glass','1/2" Clear Glass','1/2" Low Iron Glass'
+    '3/8" Low Iron Acid Etched Glass'
   ]);
+  assert.match(catalog('APPROVED_GLASS_OPTIONS').at(-1).label,/^Other/);
   assert.deepEqual(catalog('APPROVED_MIRROR_OPTIONS').map(item=>item.label),[
     '1/4" Clear Mirror','1/4" Low Iron Mirror','1/4" Bronze Mirror','1/4" Grey Mirror'
   ]);
   assert.match(script,/Glass: APPROVED_GLASS_OPTIONS,\s*Mirror: APPROVED_MIRROR_OPTIONS/);
+  assert.match(script,/function isUnpricedGlass\(\) \{ return glassTypeSelect\?\.value === 'Other'; \}/);
+  assert.match(script,/function isManualReviewQuote/);
   assert.match(script,/glassTypeSelect\.value = ""/);
   assert.match(script,/mirrorFrameGroup\.hidden = selectedService !== 'Mirror'/);
   assert.match(script,/mirrorFrameSelect\.value = 'no'/);
@@ -167,9 +175,9 @@ test('model choices describe physical layouts and leave material selection indep
   const glassTypeSelect={value:'Low-Iron Glass - 3/8'};
   let currentModel='';
   const doorTypeSelect={innerHTML:'',value:'',appendChild(option){this.option=option;this.value=option.value;}};
-  const selectModel=new Function('productSelect','products','document','doorTypeSelect','updateProductGallery','updateProjectReference',handlerBody);
+  const selectModel=new Function('productSelect','products','document','doorTypeSelect','updateProductGallery','updateProjectReference','serviceSelect','hardwareGroup','hardwareFinishSelect','updateCustomOptionFields',handlerBody);
   for(const model of models){
-    selectModel({value:model.name},models,{createElement:()=>({})},doorTypeSelect,product=>{currentModel=product.name;},()=>{});
+    selectModel({value:model.name},models,{createElement:()=>({})},doorTypeSelect,product=>{currentModel=product.name;},()=>{},{value:'Shower Doors'},{hidden:true},{required:false},()=>{});
     assert.equal(glassTypeSelect.value,'Low-Iron Glass - 3/8',`${model.name} leaves material selection unchanged`);
     assert.equal(doorTypeSelect.value,model.doorType);
     assert.equal(currentModel,model.name);
@@ -226,11 +234,12 @@ test('Admin selling-price controls cannot fall back to native GET and require au
   assert.match(admin,/pricingDraft = pricing\?\.config\?\.pricingModel === 'selling-rates-v1'/);
   assert.match(admin,/pricingDraft = pricing\.config;/);
   assert.match(admin,/Central pricing \\u2014 Saved\. Revision/);
-  assert.ok(admin.indexOf("pricingForm?.addEventListener('submit'") < admin.indexOf('supabaseClient.auth.getSession()\n    .then'));
+  assert.match(admin,/pricingForm\?\.addEventListener\('submit'/);
+  assert.match(admin,/getSession\(\)\s*\.then\(\(\{ data: \{ session \} \}\)/);
 });
 
 test('OPTIONS succeeds before client initialization; errors and success retain CORS',async()=>{
-  const origins=['http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:8765','http://localhost:8765','https://brunos-glass-mirror.english-academy-fl.workers.dev'];
+  const origins=['http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:8765','http://localhost:8765','https://brunos-glass-mirror.english-academy-fl.workers.dev','https://brunos-glass-mirror-staging.english-academy-fl.workers.dev'];
   let handler,initializations=0;
   let source=readFileSync(new URL('../supabase/functions/pricing/index.ts',import.meta.url),'utf8');
   source=source.replace(/^\uFEFF/,'').replace(/^import .*;\r?\n/gm,'');
@@ -255,6 +264,22 @@ test('OPTIONS succeeds before client initialization; errors and success retain C
     const response=await healthy(new Request('https://local/pricing',{method:'POST',headers:{Origin:origin},body:JSON.stringify(body)}));
     assert.equal(response.status,status);assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);
   }
+});
+
+test('staging Worker and pricing function target the isolated configured Supabase project',()=>{
+  const runtime=readFileSync(new URL('../.staging-dist/runtime-config.js',import.meta.url),'utf8');
+  const worker=readFileSync(new URL('../wrangler.staging.jsonc',import.meta.url),'utf8');
+  const functionSource=readFileSync(new URL('../supabase/functions/pricing/index.ts',import.meta.url),'utf8');
+  assert.match(runtime,/https:\/\/ohtcuocrxfidpwypxvwv\.supabase\.co/);
+  assert.match(runtime,/supabasePublishableKey:'sb_publishable_[^']+'/);
+  assert.doesNotMatch(runtime,/ygcpfehitvhipsncqxdm/,'Staging runtime config does not target production.');
+  assert.match(worker,/"name":\s*"brunos-glass-mirror-staging"/);
+  assert.match(worker,/"directory":\s*"\.\/\.staging-dist"/);
+  assert.match(functionSource,/brunos-glass-mirror-staging\.english-academy-fl\.workers\.dev/);
+  assert.match(functionSource,/Deno\.env\.get\('SUPABASE_URL'\)/);
+  assert.match(functionSource,/SUPABASE_SECRET_KEYS/);
+  assert.match(functionSource,/SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(functionSource,/from\('quote_pricing_config'\)\.select\(columns\)\.eq\('id',1\)\.maybeSingle\(\)/);
 });
 
 test('production pricing auth checks verified app metadata or configured allowlist',async()=>{
@@ -288,7 +313,7 @@ test('actual submit function overwrites forged prices, preserves uploads and rej
     Request,Response,Headers,crypto,btoa,atob,TextEncoder,TextDecoder,console,URL});
   vm.runInContext(stripTypeScriptTypes(source),context);
   const call=(revision,project=shower,mirrorFrame=false)=>handler(new Request('https://local/submit-quote',{method:'POST',body:JSON.stringify({action:'create',
-    quote:{service:project.service,glass_type:project.glassType,width:project.width,height:project.height,quantity:1,
+    quote:{service:project.service,glass_type:project.glassType,width:project.width,height:project.height,customer_confirmed_width:project.width,customer_confirmed_height:project.height,measurement_source:'customer_manual',quantity:1,
       estimated_price:1,estimated_price_low:1,estimated_price_high:1,final_price:1,status:'Approved',square_feet:1},
     pricing:{revision,counts:project.counts,mirrorFrame},files:[{name:'photo.jpg',type:'image/jpeg',size:10}]})}));
   assert.equal((await call(2)).status,409);assert.equal(rows.length,0);
@@ -306,7 +331,7 @@ test('actual submit function overwrites forged prices, preserves uploads and rej
   const framedMirror={...mirror,width:60,height:96};
   assert.equal((await call(3,framedMirror,true)).status,200);
   assert.equal(rows[2].estimated_price_low,2400);
-  assert.equal(rows[2].estimated_price_high,2400);
+  assert.equal(rows[2].estimated_price_high,2640);
 });
 
 test('custom quote submit skips automatic pricing and stores null estimates',()=>{

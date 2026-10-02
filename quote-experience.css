@@ -1,8 +1,8 @@
-/* Focused quotation shell. Marketing content stays available via Back to website. */
+/* Focused quotation shell: the public root opens directly at the wizard. */
 .quote-app-bar { display:none; }
 .quote-app-active { font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif; }
 .quote-app-active #main-content > section:not(#quote),
-.quote-app-active .referral-editorial, .quote-app-active .site-footer,
+.quote-app-active .site-footer,
 .quote-app-active .header-detail, .quote-app-active #site-nav, .quote-app-active .menu-toggle,
 .quote-app-active[data-task-view="quote"] #tracking,
 .quote-app-active[data-task-view="tracking"] #main-content { display:none !important; }
@@ -10,8 +10,53 @@
 .quote-app-bar a { padding:8px 0; text-decoration:underline; text-underline-offset:4px; }
 .quote-app-active .header-inner { min-height:76px; justify-content:center; }
 .quote-app-active .official-logo { width:172px; }
-.quote-app-active .quote-visual-reference { display:none; }
-.quote-app-active .quote.section-pad { min-height:calc(100vh - 140px); padding-top:24px; }
+.quote-app-active .floating-contact { display:none !important; }
+.quote-app-active .instant-quote-brand { display:block !important; max-width:1040px; margin:0 auto 14px; padding:14px 0 8px; }
+.instant-quote-brand > .eyebrow,.instant-quote-brand > h2,.instant-quote-brand > p:not(.instant-quote-powered):not(.instant-quote-tagline):not(#quote-referral-note),.instant-quote-brand > .intro-caption { display:none !important; }
+.instant-quote-brand h1 { margin:0; color:#09274d; font-size:clamp(29px,5vw,42px); font-weight:850; letter-spacing:-.04em; line-height:1.1; }
+.instant-quote-powered { margin:6px 0 0; color:#40566b; font-size:13px; font-weight:700; }
+.instant-quote-tagline { margin:5px 0 0; color:#795b2c; font-size:14px; font-weight:700; }
+.quote-app-active .quote-visual-reference:not([hidden]) { display:grid; }
+.quote-app-active .quote.section-pad { min-height:calc(100vh - 140px); padding-top:14px; }
+.quote-app-active .quote-grid { display:block; }
+.quote-app-active .quote-form { max-width:1040px; margin:0 auto; }
+.quote-app-active .wizard-progress { display:none !important; }
+.quote-app-active .wizard-progress[hidden] { display:none !important; }
+/* Keep legacy step controls available for internal regression-flow helpers,
+   while never rendering them in the customer-facing one-page experience. */
+.wizard-next,
+.wizard-back { display:none !important; }
+.estimated-deposit-cta { display:flex; align-items:center; justify-content:center; width:100%; min-height:68px; margin-top:16px; padding:16px 20px; border:1px solid #173d66; border-radius:10px; background:linear-gradient(135deg,#123d67,#09274d 70%); box-shadow:0 10px 24px #09274d2b,inset 0 1px #ffffff30; color:#fff; font:850 clamp(15px,2.5vw,19px)/1.35 'Manrope',sans-serif; letter-spacing:.025em; text-align:center; text-decoration:none; cursor:pointer; transition:transform .16s ease,box-shadow .16s ease,background .16s ease; }
+.estimated-deposit-cta:hover { transform:translateY(-1px); background:linear-gradient(135deg,#194c7c,#0b3157 70%); box-shadow:0 14px 28px #09274d36,inset 0 1px #ffffff38; }
+.estimated-deposit-cta:focus-visible { outline:3px solid #c49a58; outline-offset:3px; }
+.confirmation-deposit-cta { margin:22px 0 8px; }
+.estimated-deposit-followup { margin:12px 0 0; padding:12px 14px; border-left:4px solid #397d64; background:#edf6f1; color:#183e31; font-size:14px; line-height:1.55; }
+.estimated-deposit-contact-note { margin:10px 0 0; color:#53677b; font-size:13px; line-height:1.5; text-align:center; }
+.quote-app-active .wizard-step-panel:not([hidden]) { display:block; margin:0 0 16px; padding:clamp(18px,3vw,30px); border:1px solid #d7e0e7; border-radius:12px; background:#fff; box-shadow:0 8px 24px #09274d0d; }
+.quote-app-active .wizard-panel-heading { margin:0 0 20px; }
+.quote-app-active .wizard-panel-heading > span { display:block; margin-bottom:7px; color:#8a6b3d; font-size:11px; font-weight:800; letter-spacing:.14em; }
+.quote-app-active .wizard-actions { position:static; display:flex; justify-content:flex-end; margin-top:22px; padding:0; background:transparent; }
+.quote-app-active .wizard-actions[hidden] { display:none !important; }
+.quote-app-active .wizard-step-panel:not(.is-current) .wizard-actions { display:none; }
+.quote-app-active .wizard-actions > .wizard-back { display:none; }
+.quote-app-active .wizard-next { min-height:50px; padding:12px 20px; }
+.quote-app-active .wizard-validation:not([hidden]) { margin:0 auto 14px; max-width:1040px; padding:12px 16px; border-left:3px solid #a7793d; background:#fff6e8; color:#513918; }
+.quote-app-active .form-section { min-width:0; }
+.quote-app-active .service-options { margin-bottom:0; }
+.quote-app-active .quote-visual-reference { margin:0 auto 16px; max-width:1040px; grid-template-columns:minmax(120px,220px) 1fr; }
+.quote-app-active .quote-visual-reference img { max-height:150px; }
+.quote-app-active #estimated-price-panel { margin:0; }
+.quote-app-active .project-tracking { min-height:calc(100vh - 160px); padding:28px 0; }
+.quote-app-active .tracking-shell { max-width:780px; }
+.quote-app-active .tracking-shell h2 { margin:0 0 10px; font-size:clamp(26px,4vw,36px); }
+.quote-app-active[data-task-view="quote"] .referral-editorial { display:none !important; }
+.quote-app-active[data-task-view="tracking"] .referral-editorial { display:block; padding:22px 0; }
+.quote-app-active[data-task-view="tracking"] .referral-copy h2 { margin:0 0 6px; font-size:21px; }
+.quote-app-active[data-task-view="tracking"] .referral-copy > p:not(.eyebrow):not(.commission-note),
+.quote-app-active[data-task-view="tracking"] .commission-note,
+.quote-app-active[data-task-view="tracking"] .qr-card small { display:none; }
+.quote-app-active[data-task-view="tracking"] .referral-layout { align-items:center; }
+.quote-app-active[data-task-view="tracking"] .qr-card img { width:78px; height:78px; }
 .quote-app-active .wizard-panel-heading h2 { font-family:inherit; font-size:clamp(25px,4vw,34px); letter-spacing:-.025em; }
 .quote-app-active .wizard-description { font-size:14px; line-height:1.6; }
 .quote-app-active .project-cart { margin-top:24px; }
@@ -23,6 +68,20 @@
 .scan-preview { position:relative; background:#102c46; }
 .scan-preview img { display:block; width:100%; max-height:300px; object-fit:contain; }
 .scan-preview-label { position:absolute; bottom:12px; left:12px; padding:7px 10px; background:#102c46e6; color:white; font-size:10px; letter-spacing:.08em; }
+.scan-measure-guide { position:absolute; inset:14% 10%; border:1px dashed #fff; pointer-events:none; }
+.scan-measure-guide::before,.scan-measure-guide::after { position:absolute; content:''; background:#fff; box-shadow:0 1px 5px #071a2d88; }
+.scan-measure-guide::before { left:0; right:0; bottom:-10px; height:2px; }
+.scan-measure-guide::after { top:0; bottom:0; right:-10px; width:2px; }
+.scan-measure-guide span { position:absolute; padding:5px 7px; border-radius:4px; background:#09274ded; color:#fff; font-size:10px; font-weight:800; line-height:1.35; text-align:center; }
+.scan-width-guide { left:50%; bottom:-31px; transform:translateX(-50%); }
+.scan-height-guide { right:-18px; top:50%; writing-mode:vertical-rl; transform:translateX(100%) translateY(-50%); }
+.scan-result-content::after { content:'AI dimensions are preliminary estimates only. Bruno must field-measure before fabrication.'; display:block; margin-top:10px; color:#546778; font-size:11px; line-height:1.5; }
+.scan-measure-guide.has-ai-measurement { border:2px solid #f6d273; background:#f6d27312; }
+.scan-measure-guide.has-ai-measurement::before,.scan-measure-guide.has-ai-measurement::after { background:#f6d273; }
+.scan-measure-guide.has-ai-measurement .scan-width-guide,.scan-measure-guide.has-ai-measurement .scan-height-guide { background:#09274df2; color:#fff; }
+.ai-estimate-label { display:inline-block; margin:12px 0 6px; padding:7px 10px; border-radius:5px; background:#fff3d6; color:#684300; font-size:12px; font-weight:900; letter-spacing:.04em; }
+.ai-measurement-confirmation { display:flex; align-items:flex-start; gap:10px; margin:14px 0; padding:14px; border:1px solid #d4b165; border-radius:8px; background:#fffaf0; font-size:14px; font-weight:700; line-height:1.5; }
+.ai-measurement-confirmation input { flex:0 0 auto; width:20px; height:20px; margin:1px 0 0; }
 .scan-result-content { padding:20px; }
 .scan-result-content h3 { margin:6px 0 14px; font-size:21px; }
 .scan-result-content .eyebrow { margin:0; }
@@ -46,6 +105,30 @@
 .recommendation-badge { display:block; margin-top:12px; color:#284d3c; background:#e6f2eb; padding:8px; font-size:11px; font-weight:700; }
 .choice-card.is-recommended { border-color:#719580; }
 #request-tracking-notice,#request-processing-note { padding:16px; border-left:3px solid #ac8142; background:#fff6e5; line-height:1.7; }
+.request-confirmation .tracking-credentials:not([hidden]) { display:grid; gap:18px; margin:20px 0 28px; padding:clamp(20px,4vw,34px); border:2px solid #c7a66a; border-radius:12px; background:linear-gradient(145deg,#fff 0%,#f2f6fa 100%); box-shadow:0 16px 44px #09274d1c; color:#09274d; }
+.credential-card-title { margin:0; color:#09274d; font-size:clamp(19px,3vw,26px); font-weight:800; letter-spacing:.045em; line-height:1.25; }
+.credential-item { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:14px; min-width:0; padding:18px; border:1px solid #cbd7e2; border-radius:8px; background:#fff; }
+.credential-item > div { min-width:0; }
+.credential-label { display:block; margin-bottom:8px; color:#405b75; font-size:12px; font-weight:800; letter-spacing:.12em; }
+.credential-value { display:block; color:#071a2d; font-size:clamp(24px,5vw,36px); font-weight:900; letter-spacing:.035em; line-height:1.25; overflow-wrap:anywhere; }
+.credential-copy,.credential-actions .button { display:inline-flex; align-items:center; justify-content:center; min-width:86px; min-height:52px; padding:12px 16px; border:1px solid #09274d; border-radius:6px; background:#fff; color:#09274d; font:800 13px/1.2 'Manrope',system-ui,sans-serif; letter-spacing:.035em; cursor:pointer; }
+.credential-copy:hover,.credential-copy:focus-visible { background:#eaf1f7; outline:3px solid #8faeca; outline-offset:2px; }
+.credential-copy.is-copied { border-color:#345f49; color:#234d39; background:#edf6f0; }
+.credential-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.credential-actions .button { min-height:58px; text-decoration:none; }
+.credential-actions [data-copy-both] { border-color:#c7a66a; background:#09274d; color:#fff; }
+.credential-actions .credential-track { background:#173c58; color:#fff; }
+.credential-save-reminder { margin:0; color:#09274d; font-size:clamp(15px,2vw,19px); font-weight:900; letter-spacing:.045em; line-height:1.4; }
+.credential-explanation { margin:0; color:#293f55; font-size:15px; font-weight:700; line-height:1.6; }
+.credential-copy-status { min-height:0; margin:0!important; color:#345f49; font-size:13px; font-weight:700; }
+.credential-copy-status:empty { display:none; }
+.credential-card-title:focus-visible { outline:3px solid #8faeca; outline-offset:4px; }
+.tracking-credentials.is-entering { animation:credential-card-enter .48s ease-out both; }
+.credential-value.is-emphasized { animation:credential-value-emphasis .72s ease-out both; }
+.credential-track.is-attention { animation:credential-track-attention .72s ease-out .35s both; }
+@keyframes credential-card-enter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes credential-value-emphasis { 0%,100% { transform:scale(1); } 45% { transform:scale(1.025); } }
+@keyframes credential-track-attention { 0%,100% { box-shadow:0 0 0 0 #c7a66a00; } 45% { box-shadow:0 0 0 4px #c7a66a75; } }
 .tracking-stages { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:0; list-style:none; }
 .tracking-stages li { padding:14px; border:1px solid #d9e1df; border-radius:6px; background:#f6f8fa; }
 .tracking-stages strong,.tracking-stages span { display:block; font-size:13px; line-height:1.6; }
@@ -53,12 +136,20 @@
 @keyframes scan-progress { to { transform:rotate(360deg); } }
 @media(max-width:760px) {
   .quote-app-active .quote-app-bar { padding:10px 20px; }
-  .quote-app-bar strong { order:-1; width:100%; text-align:center; }
+  .quote-app-bar strong { text-align:center; }
   .quote-app-active .quote.section-pad { padding-top:14px; }
   .scan-measure-card[data-scan-camera] { min-height:132px; }
   .scan-measure-card[data-scan-camera] strong { font-size:19px; }
   .opening-details,.tracking-stages { grid-template-columns:1fr; }
+  .credential-item { grid-template-columns:minmax(0,1fr); gap:12px; padding:15px; }
+  .credential-copy { width:100%; }
+  .credential-actions { grid-template-columns:1fr; }
+  .credential-actions .button { width:100%; }
   .quotation-page .wizard-next { white-space:normal; font-size:12px; line-height:1.4; }
   .quote-app-active .wizard-actions { gap:10px; }
 }
-@media(prefers-reduced-motion:reduce) { .scan-result[aria-busy="true"] .scan-result-status::before { animation:none; } }
+@media(prefers-reduced-motion:reduce) {
+  .scan-result[aria-busy="true"] .scan-result-status::before { animation:none; }
+  .tracking-credentials.is-entering,.credential-value.is-emphasized,.credential-track.is-attention { animation:none; }
+  .credential-copy,.credential-actions .button { transition:none; }
+}

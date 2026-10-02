@@ -69,6 +69,12 @@ const QUOTE_FIELDS = [
   'quantity',
   'width',
   'height',
+  'ai_estimated_width',
+  'ai_estimated_height',
+  'customer_confirmed_width',
+  'customer_confirmed_height',
+  'measurement_confidence',
+  'measurement_source',
   'square_feet',
   'message',
   'estimated_price',
@@ -199,6 +205,18 @@ async function createQuote(body: { quote: Record<string, unknown>; pricing?: {re
       .map((field) => [field, body.quote[field]])
   );
 
+  const measurementSource=quoteData.measurement_source;
+  if(!['customer_manual','ai_estimated_confirmed','ai_estimated_edited'].includes(String(measurementSource)))return jsonResponse({error:'Confirm the preliminary measurement source.'},400);
+  const validDimension=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=12&&value<=240;
+  if(!validDimension(quoteData.customer_confirmed_width)||!validDimension(quoteData.customer_confirmed_height))return jsonResponse({error:'Enter valid customer-confirmed width and height.'},400);
+  quoteData.width=quoteData.customer_confirmed_width;
+  quoteData.height=quoteData.customer_confirmed_height;
+  if(measurementSource==='customer_manual'){
+    quoteData.ai_estimated_width=null;quoteData.ai_estimated_height=null;quoteData.measurement_confidence=null;
+  }else if(!validDimension(quoteData.ai_estimated_width)||!validDimension(quoteData.ai_estimated_height)||typeof quoteData.measurement_confidence!=='number'||quoteData.measurement_confidence<.75||quoteData.measurement_confidence>1){
+    return jsonResponse({error:'AI estimated dimensions need customer confirmation and a reliable visual reference.'},400);
+  }
+
   // Recompute automatic estimates using trusted central configuration; custom requests are stored without invented prices.
   if (body.pricing?.customQuote === true) {
     if (!quoteData.product || typeof quoteData.product !== 'string') return jsonResponse({error:'Select the custom service requested.'},400);
@@ -280,7 +298,7 @@ function publicProject(quote: Record<string, any>) {
     installationCompletedAt: quote.installation_completed_at,
     preliminaryEstimate: quote.estimated_price == null ? null : Number(quote.estimated_price),
     preliminaryEstimateRange: quote.estimated_price_low == null || quote.estimated_price_high == null ? null : {
-      low: Number(quote.estimated_price_low), high: Number(quote.estimated_price_high) + 150
+      low: Number(quote.estimated_price_low), high: Number(quote.estimated_price_high)
     },
     finalQuote: published ? {
       status: quote.final_quote_accepted_at ? 'Accepted' : 'Published',

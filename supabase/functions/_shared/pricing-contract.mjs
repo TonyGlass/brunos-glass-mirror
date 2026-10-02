@@ -65,7 +65,7 @@ export function normalizeProject(value) {
   if (!value || !['Shower Doors','Mirror','Glass'].includes(value.service)) throw Error('Select an available service');
   if (typeof value.glassType !== 'string' || !value.glassType || value.glassType.length > 100) throw Error('Select a material');
   const materialKey = value.glassType.toLowerCase().replaceAll('"','').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const glassMaterials = new Set(['clear-glass-3-8','low-iron-glass-3-8','reeded-moru-3-8','satin-acid-etched-3-8','satin-acid-etched-low-iron-3-8','clear-glass-1-2','low-iron-glass-1-2']);
+  const glassMaterials = new Set(['clear-glass-3-8','low-iron-glass-3-8','reeded-moru-3-8','satin-acid-etched-3-8','satin-acid-etched-low-iron-3-8']);
   const mirrorMaterials = new Set(['clear-mirror-1-4','low-iron-mirror-1-4','bronze-mirror-1-4','gray-mirror-1-4']);
   if (value.service === 'Mirror' ? !mirrorMaterials.has(materialKey) : !glassMaterials.has(materialKey)) throw Error('This material is not in the approved automatic-pricing catalog');
   const {width, height, quantity} = value;
@@ -91,12 +91,14 @@ export function publicEstimate(project, record) {
   if (!result?.complete || !Number.isFinite(result.low) || !Number.isFinite(result.high)) {
     return {complete:false, reason:'pricing_unavailable', revision:record.revision};
   }
-  return {complete:true, low:result.low, high:result.high, revision:record.revision,
+  const estimateHigh = Math.round((result.low * 1.1 + Number.EPSILON) * 100) / 100;
+  return {complete:true, baseLow:result.low, baseHigh:result.low,
+    low:result.low, high:estimateHigh, estimateFactor:1.1, revision:record.revision,
     ...(result.breakdown ? {breakdown:result.breakdown} : {})};
 }
 
 export function quoteEstimateFields(result) {
-  return {estimated_price:result.complete ? (result.low+result.high)/2 : null,
+  return {estimated_price:result.complete ? result.low : null,
     estimated_price_low:result.complete ? result.low : null,
     estimated_price_high:result.complete ? result.high : null, final_price:null};
 }

@@ -25,6 +25,15 @@
         <input id="login-password" type="password" autocomplete="current-password" required />
         <button class="button button-accent" type="submit">Sign in <span aria-hidden="true">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â€</span></button>
       </form>
+      <button class="login-recovery-link" id="request-password-reset" type="button">Forgot your password?</button>
+      <form id="password-recovery-form" class="login-form" hidden>
+        <p class="panel-copy">Choose a new password for your Admin account. Use at least 12 characters.</p>
+        <label for="new-admin-password">New password</label>
+        <input id="new-admin-password" type="password" autocomplete="new-password" minlength="12" required />
+        <label for="confirm-admin-password">Confirm new password</label>
+        <input id="confirm-admin-password" type="password" autocomplete="new-password" minlength="12" required />
+        <button class="button button-accent" type="submit">Set new password</button>
+      </form>
       <p class="form-status" id="login-status" role="status" aria-live="polite"></p>
     </section>
 

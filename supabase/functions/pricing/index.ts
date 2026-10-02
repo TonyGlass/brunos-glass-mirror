@@ -18,6 +18,7 @@ const columns = 'config,revision,updated_at,updated_by';
 const allowedOrigins = new Set(['http://localhost:8000','http://127.0.0.1:8000',
   'http://localhost:8765','http://127.0.0.1:8765',
   'https://brunos-glass-mirror.english-academy-fl.workers.dev',
+  'https://brunos-glass-mirror-staging.english-academy-fl.workers.dev',
   ...(Deno.env.get('ADDITIONAL_ALLOWED_ORIGINS') || '').split(',').map(origin=>origin.trim()).filter(Boolean)]);
 
 Deno.serve(createPricingHandler({

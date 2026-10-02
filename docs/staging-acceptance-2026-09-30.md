@@ -1,5 +1,20 @@
 # Mobile staging acceptance — September 30, 2026
 
+## Superseded staging assets — October 1, 2026
+
+The subsequent manual staging check found that the deployed customer page still
+showed the seven-step wizard and the old fixed $150 estimate allowance. The
+source and `dist` already had the continuous one-page presentation and the
+approved formula (`high = base × 1.10`; estimated deposit = `base × 0.50`), but
+`.staging-dist` was an older build. Its old $1,800–$1,950 range is historical and
+must not be used as the current estimate contract.
+
+`.staging-dist` has now been rebuilt locally from synchronized `dist` assets and
+the existing staging-only runtime config. This build has not been deployed.
+Direct network access to the staging Worker and Cloudflare deployment metadata
+was unavailable in this environment, so the live state above comes from the
+customer's manual staging check.
+
 ## Deployment
 
 - Customer site: https://brunos-glass-mirror-staging.english-academy-fl.workers.dev/
@@ -24,8 +39,9 @@ Staging central pricing returned Revision 3 and these results:
 - Shower Doors, 60 x 72, Low-Iron Glass - 3/8: $1,800 base.
 - Mirror, 60 x 96, Clear Mirror - 1/4: $1,800 base.
 - Same Mirror with Metal / Frame: $1,800 mirror + $600 frame = $2,400 base.
-- Customer-facing preliminary range is base to base + $150; published Final Quote
-  requires a 50% deposit.
+- This acceptance was recorded before the 10% planning estimate formula. Current
+  staging estimates use the configured base multiplied by 1.10; published Final
+  Quote pricing remains Admin-confirmed.
 
 A synthetic request marked `STAGING AUTOMATED ACCEPTANCE TEST ONLY` was created in
 the staging database. The backend generated its Order Number and private access

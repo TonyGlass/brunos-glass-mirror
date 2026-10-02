@@ -30,10 +30,10 @@ export function createPreliminaryDocument(input = {}) {
   const base = range(money(quote.estimated_price_low), money(quote.estimated_price_high));
   return {...common(input), kind:'preliminary-estimate', title:'Preliminary Estimate', authoritative:false,
     disclaimer:PRELIMINARY_DISCLAIMER,
-    pricing:{baseEstimate:base, customerEstimateRange:base ? {low:base.low, high:base.high + 150} : null,
-      estimatedDeposit:base ? {low:base.low * .5, high:base.high * .5} : null,
+    pricing:{baseEstimate:base?.low ?? null, customerEstimateRange:base ? {low:base.low, high:base.high} : null,
+      estimatedDeposit:base ? base.low * .5 : null,
       finalPrice:null, finalApprovedPrice:null, finalDeposit:null,
-      note:'Customer range adds $150 to the upper base estimate for planning. Estimated deposit uses the base estimate. Final pricing and deposit require Bruno Admin review.'}};
+      note:'The estimate range starts at the base estimate and adds 10% at the high end. The estimated deposit is 50% of the base estimate. Final pricing and deposit require Bruno Admin review.'}};
 }
 export function createFinalQuoteDocument(input = {}) {
   const quote = input.quote || {};

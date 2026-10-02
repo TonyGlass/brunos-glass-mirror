@@ -26,6 +26,8 @@ let lastEstimateRecord = null;
 let estimateRequestVersion = 0;
 let estimateTimer;
 let customQuoteService = '';
+let submittedOrderNumber = '';
+let currentEstimatedDeposit = null;
 const referralNameByCode = Object.freeze({jeff:'Jeff', tony:'Tony', hamy:'Hamy'});
 const referralCandidate = new URLSearchParams(window.location.search).get('ref')?.trim().toLowerCase() || '';
 const referralCode = Object.hasOwn(referralNameByCode, referralCandidate) ? referralCandidate : '';
@@ -47,7 +49,7 @@ async function requestEstimatedPrice(project) {
   if (!response.ok) throw Error(body.error || 'Central pricing is unavailable. Please try again.');
   const result = body.estimate;
   if (!result || typeof result.complete !== 'boolean' || !Number.isSafeInteger(result.revision) || result.revision < 0 ||
-      (result.complete && (!Number.isFinite(result.low) || !Number.isFinite(result.high) || result.low < 0 || result.high < result.low))) {
+      (result.complete && (!Number.isFinite(result.low) || !Number.isFinite(result.high) || !Number.isFinite(result.baseLow) || !Number.isFinite(result.baseHigh) || result.low < 0 || result.high < result.low || result.baseLow < 0 || result.baseHigh < result.baseLow))) {
     throw Error('Invalid pricing response. Please try again.');
   }
   return result;
@@ -74,6 +76,20 @@ const doorTypeSelect = document.querySelector('#door-type');
 const hardwareGroup = document.querySelector('#hardware-group');
 const hardwareFinishSelect = document.querySelector('#hardware-finish');
 const handleStyleSelect = document.querySelector('#handle-style');
+const glassOtherGroup = document.querySelector('#glass-other-group');
+const glassOtherDescription = document.querySelector('#glass-other-description');
+const hardwareOtherGroup = document.querySelector('#hardware-other-finish-group');
+const hardwareOtherFinish = document.querySelector('#hardware-other-finish');
+function isUnpricedGlass() { return glassTypeSelect?.value === 'Other'; }
+function isManualReviewQuote() { return Boolean(customQuoteService || isUnpricedGlass()); }
+function updateCustomOptionFields() {
+  const otherGlass = isUnpricedGlass();
+  if (glassOtherGroup) glassOtherGroup.hidden = !otherGlass;
+  if (glassOtherDescription) glassOtherDescription.required = otherGlass;
+  const otherHardware = hardwareFinishSelect?.value === 'Other';
+  if (hardwareOtherGroup) hardwareOtherGroup.hidden = !otherHardware;
+  if (hardwareOtherFinish) hardwareOtherFinish.required = otherHardware;
+}
 const projectReferenceImage = document.querySelector('[data-project-reference-image]');
 const projectReferenceTitle = document.querySelector('[data-project-reference-title]');
 const projectReferenceCaption = document.querySelector('[data-project-reference-caption]');
@@ -94,6 +110,8 @@ const projectReferenceByService = {
 function updateProjectReference() {
   if (!projectReferenceImage || !projectReferenceTitle || !projectReferenceCaption) return;
   const service = customQuoteService || serviceSelect?.value || '';
+  const referenceFigure = document.querySelector('#quote-visual-reference');
+  if (referenceFigure) referenceFigure.hidden = !service;
   const model = !customQuoteService && service === 'Shower Doors'
     ? products.find((item) => item.name === productSelect?.value)
     : null;
@@ -272,6 +290,15 @@ function validateQuoteForm() {
     return false;
   }
 
+  if (window.QuoteMeasurement && !window.QuoteMeasurement.isConfirmed()) {
+    const confirmation=document.querySelector('[data-confirm-ai-measurement]');
+    formStatus.classList.add('form-status-error');
+    formStatus.textContent='Review and confirm the AI estimated width and height before submitting.';
+    confirmation?.focus();
+    confirmation?.scrollIntoView({behavior:'smooth',block:'center'});
+    return false;
+  }
+
   const requiredFields = Array.from(quoteForm.querySelectorAll('[required]'));
   const invalidField = requiredFields.find((field) => !field.checkValidity());
 
@@ -307,7 +334,7 @@ function updatePhotoSummary() {
   const files = Array.from(photosInput.files || []);
   const scanStatus = document.querySelector('.scan-photo-status');
   if (scanStatus) scanStatus.textContent = files.length
-    ? `${files.length} file(s) selected. Photos do not generate dimensions; enter tape measurements below.`
+    ? `${files.length} file(s) selected. Photo analysis may suggest approximate dimensions when a reliable size reference is visible.`
     : '';
 
   if (!files.length) {
@@ -631,7 +658,7 @@ const APPROVED_GLASS_OPTIONS = [
   ['Clear Glass - 3/8','3/8" Clear Glass'],['Low-Iron Glass - 3/8','3/8" Low Iron Glass'],
   ['Reeded / Moru - 3/8','3/8" Reeded Glass'],['Satin Acid-Etched - 3/8','3/8" Acid Etched Glass'],
   ['Satin Acid-Etched Low-Iron - 3/8','3/8" Low Iron Acid Etched Glass'],
-  ['Clear Glass - 1/2','1/2" Clear Glass'],['Low-Iron Glass - 1/2','1/2" Low Iron Glass']
+  ['Other','Other — Bruno to review']
 ];
 const APPROVED_MIRROR_OPTIONS = [
   ['Clear Mirror - 1/4','1/4" Clear Mirror'],['Low-Iron Mirror - 1/4','1/4" Low Iron Mirror'],
@@ -803,7 +830,10 @@ if (
 
     hardwareGroup.hidden = true;
     hardwareFinishSelect.required = false;
+    hardwareFinishSelect.value = '';
+    hardwareOtherFinish.value = '';
     handleStyleSelect.required = false;
+    updateCustomOptionFields();
     document.querySelector('#enduro-shield-group').hidden = selectedService === 'Mirror';
     if (selectedService === 'Mirror') document.querySelector('#enduro-shield').checked = false;
     const mirrorFrameGroup = document.querySelector('#mirror-frame-group');
@@ -829,6 +859,11 @@ if (
   if (!product) {
     return;
   }
+
+  const hardwareForShower = serviceSelect.value === 'Shower Doors';
+  hardwareGroup.hidden = !hardwareForShower;
+  hardwareFinishSelect.required = hardwareForShower;
+  updateCustomOptionFields();
 
   // Store the physical layout separately for quote records.
   doorTypeSelect.innerHTML = '<option value="">Select an option</option>';
@@ -863,7 +898,6 @@ const estimatedPriceValue = document.querySelector('#estimated-price-value');
 
 
 function calculateSquareFeet() {
-
   const width = parseConstructionMeasurement(widthInput.value);
   const height = parseConstructionMeasurement(heightInput.value);
 
@@ -949,6 +983,11 @@ function updateEstimatedPrice() {
     return;
   }
 
+  if (isUnpricedGlass()) {
+    renderEstimateDisplays(null, 'Custom glass selected — Bruno will review the requested specification. No automatic price is available.');
+    return;
+  }
+
   const width = parseConstructionMeasurement(widthInput.value);
   const height = parseConstructionMeasurement(heightInput.value);
   const quantity = Number(document.querySelector('#quantity').value);
@@ -995,26 +1034,42 @@ function updateEstimatedPrice() {
   }, 180);
 }
 
+function syncReviewEstimate() {
+  const panel = document.querySelector('#estimated-price-panel');
+  const summary = document.querySelector('.quote-review-estimate');
+  if (!panel || !summary) return;
+  for (const [key, selector] of Object.entries({
+    range:'[data-estimate-price]',
+    base:'[data-estimate-base]',
+    deposit:'[data-estimate-deposit]'
+  })) {
+    const target = summary.querySelector(`[data-review-estimate="${key}"]`);
+    const source = panel.querySelector(selector);
+    if (target && source) target.textContent = source.textContent.trim();
+  }
+}
+
 // Both visible locations receive the same result from the existing engine.
 function renderEstimateDisplays(estimate, pendingMessage = '') {
   const complete = Boolean(estimate?.complete);
   const currency = new Intl.NumberFormat('en-US', {
     style: 'currency', currency: 'USD', maximumFractionDigits: 2
   });
+  const manualReview = isManualReviewQuote();
   const baseEstimate = complete
-    ? estimate.low === estimate.high
-      ? currency.format(estimate.low)
-      : `${currency.format(estimate.low)} – ${currency.format(estimate.high)}`
-    : customQuoteService ? 'Unavailable until Bruno reviews this custom request.' : 'Base estimate appears when central pricing is available.';
-  const price = customQuoteService
-    ? 'Custom quote — estimate prepared after review.'
+    ? estimate.baseLow === estimate.baseHigh
+      ? currency.format(estimate.baseLow)
+      : `${currency.format(estimate.baseLow)} \u2013 ${currency.format(estimate.baseHigh)}`
+    : manualReview ? 'Unavailable until Bruno reviews this custom request.' : 'Base estimate appears when central pricing is available.';
+  const price = manualReview
+    ? isUnpricedGlass() ? 'Custom glass \u2014 Bruno to review. No automatic estimate.' : 'Custom quote \u2014 estimate prepared after review.'
     : complete
-    ? `${currency.format(estimate.low)} – ${currency.format(estimate.high + 150)}`
+    ? estimate.low === estimate.high ? currency.format(estimate.low) : `${currency.format(estimate.low)} \u2013 ${currency.format(estimate.high)}`
     : pendingMessage;
-  const deposit = customQuoteService
+  const deposit = manualReview
     ? 'Confirmed with your reviewed quote.'
     : complete
-    ? estimate.low === estimate.high ? currency.format(estimate.low * 0.50) : `${currency.format(estimate.low * 0.50)} \u2013 ${currency.format(estimate.high * 0.50)}`
+    ? currency.format((estimate.baseLow ?? estimate.low) * 0.50)
     : 'Available when an estimate can be calculated.';
   document.querySelectorAll('[data-estimate-breakdown]').forEach(breakdown => {
     const parts = estimate?.breakdown;
@@ -1038,10 +1093,50 @@ function renderEstimateDisplays(estimate, pendingMessage = '') {
     node.textContent = deposit;
     node.classList.toggle('has-price', complete);
   });
+  const depositNumber=complete?(estimate.baseLow??estimate.low)*0.5:null;
+  currentEstimatedDeposit=depositNumber;
+  const ctaAmount=depositNumber==null?'Estimate needed':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2,minimumFractionDigits:0}).format(depositNumber);
+  document.querySelectorAll('[data-deposit-cta-amount]').forEach(node=>{node.textContent=ctaAmount;});
+  updateDepositContactLinks(depositNumber);
   document.querySelectorAll('[data-estimate-base]').forEach(node => {
     node.textContent = `Base estimate: ${baseEstimate}`;
     node.classList.toggle('has-price', complete);
   });
+  syncReviewEstimate();
+}
+
+function updateDepositContactLinks(depositNumber=currentEstimatedDeposit) {
+  const estimateAvailable=Number.isFinite(depositNumber)&&depositNumber>=0;
+  const order=submittedOrderNumber;
+  const name=document.querySelector('#name')?.value.trim()||'Not provided';
+  const projectType=customQuoteService||serviceSelect.value||'Not selected';
+  const estimateRange=document.querySelector('[data-estimate-price]')?.textContent.trim()||'Unavailable';
+  const depositText=estimateAvailable?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2,minimumFractionDigits:0}).format(depositNumber):'Unavailable until a priced estimate is available';
+  let href='#submit-quote-request';
+  if(order&&estimateAvailable){
+    const subject=`Bruno\u2019s Instant Quote \u2014 Deposit Follow-up \u2014 ${order}`;
+    const body=[
+      'Hello Bruno\u2019s Glass,',
+      '',
+      'I submitted a quote request and would like to discuss the estimated 50% deposit and next steps.',
+      `Customer name: ${name}`,
+      `Order Number: ${order}`,
+      `Project type: ${projectType}`,
+      `Estimated range: ${estimateRange}`,
+      `Estimated 50% deposit: ${depositText}`,
+      '',
+      'Please contact me about the deposit and next steps. No payment has been made through the website.'
+    ].join('\n');
+    href=`mailto:office@brunosglass.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+  document.querySelectorAll('[data-deposit-contact]').forEach(link=>{
+    link.href=href;
+    const successAction=link.classList.contains('confirmation-deposit-cta');
+    link.hidden=successAction&&!(order&&estimateAvailable);
+    link.setAttribute('aria-disabled',String(!(order&&estimateAvailable)));
+  });
+  const successNote=document.querySelector('[data-deposit-success-note]');
+  if(successNote)successNote.hidden=!(order&&estimateAvailable);
 }
 
 function getHardwareCounts() {
@@ -1073,6 +1168,18 @@ function getHardwareCounts() {
     updateEstimatedPrice
   );
 });
+document.querySelectorAll('[data-deposit-contact]').forEach(link=>link.addEventListener('click',event=>{
+  if(link.href.startsWith('mailto:office@brunosglass.com?')&&submittedOrderNumber&&currentEstimatedDeposit!=null)return;
+  event.preventDefault();
+  const followup=document.querySelector('[data-deposit-followup]');
+  if(followup){
+    followup.textContent=currentEstimatedDeposit==null
+      ?'Submit your quote request first. Bruno will review it and confirm any deposit in the Final Quote; no estimated deposit or Order Number is available yet.'
+      :'Submit your quote request first. Bruno will issue your Order Number after submission; then this button can open a pre-addressed deposit follow-up email.';
+    followup.hidden=false;
+  }
+  document.querySelector('#submit-quote-request')?.focus({preventScroll:true});
+}));
 
 
 if (widthInput && heightInput && squareFeetResult) {
@@ -1185,7 +1292,8 @@ if (quoteForm && formStatus) {
       width && height ? Number(((width * height) / 144).toFixed(2)) : null;
 const pricingProject = currentPricingProject();
 const signature = JSON.stringify(pricingProject);
-const customQuote = Boolean(customQuoteService);
+const customGlassRequest = isUnpricedGlass();
+const customQuote = Boolean(customQuoteService || customGlassRequest);
 const previousEstimate = lastEstimateRecord?.signature === signature ? lastEstimateRecord.result : null;
 clearTimeout(estimateTimer);
 ++estimateRequestVersion;
@@ -1216,6 +1324,7 @@ const hardwareSummary = Object.entries(hardwareCounts)
   .map(([item, count]) => `${item}: ${count}`)
   .join(', ');
 const projectMessage = document.querySelector('#project').value.trim();
+const measurementRecord = window.QuoteMeasurement?.getMeasurementRecord(width,height);
     const quoteData = {
   name: document.querySelector('#name').value.trim(),
   phone: document.querySelector('#phone').value.trim(),
@@ -1224,9 +1333,9 @@ const projectMessage = document.querySelector('#project').value.trim();
   installation_address: document.querySelector('#installation-address')?.value.trim() || null,
 
   service: serviceSelect.value,
-  product: customQuoteService || productSelect.value || null,
+  product: customQuoteService || productSelect.value || (customGlassRequest ? 'Custom Glass — Bruno review' : null),
   door_type: doorTypeSelect.value || null,
-  glass_type: customQuoteService ? 'Custom quote — no automatic pricing' : glassTypeSelect.value || null,
+  glass_type: customQuote ? 'Custom quote — no automatic pricing' : glassTypeSelect.value || null,
   hardware_finish: hardwareFinishSelect.value || null,
   handle_style: handleStyleSelect.value || null,
 
@@ -1235,15 +1344,21 @@ const projectMessage = document.querySelector('#project').value.trim();
 
   width: width,
   height: height,
+  ai_estimated_width:measurementRecord?.aiEstimatedWidth ?? null,
+  ai_estimated_height:measurementRecord?.aiEstimatedHeight ?? null,
+  customer_confirmed_width:measurementRecord?.customerConfirmedWidth ?? width,
+  customer_confirmed_height:measurementRecord?.customerConfirmedHeight ?? height,
+  measurement_confidence:measurementRecord?.measurementConfidence ?? null,
+  measurement_source:measurementRecord?.measurementSource || 'customer_manual',
   square_feet:
   width > 0 && height > 0
     ? (width * height) / 144
     : null,
 
-  message: [projectMessage, serviceSelect.value === 'Mirror' && document.querySelector('#mirror-layout')?.value ? `Mirror placement: ${document.querySelector('#mirror-layout').value}` : '', customQuoteService ? `Requested custom service: ${customQuoteService}` : '', referralCode ? `Referral code: ${referralCode}` : '', pricingProject.enduroShield ? 'EnduroShield: selected' : '', pricingProject.mirrorFrame ? `Metal / Frame: Yes (${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(estimatedPrice?.breakdown?.frame || 0)})` : '', hardwareSummary ? `Hardware quantities: ${hardwareSummary}` : ''].filter(Boolean).join('\n\n'),
+  message: [projectMessage, serviceSelect.value === 'Mirror' && document.querySelector('#mirror-layout')?.value ? `Mirror placement: ${document.querySelector('#mirror-layout').value}` : '', customQuoteService ? `Requested custom service: ${customQuoteService}` : '', customGlassRequest ? `Requested glass: ${glassOtherDescription.value.trim()}` : '', hardwareFinishSelect.value === 'Other' ? `Requested hardware finish: ${hardwareOtherFinish.value.trim()}` : '', referralCode ? `Referral code: ${referralCode}` : '', pricingProject.enduroShield ? 'EnduroShield: selected' : '', pricingProject.mirrorFrame ? `Metal / Frame: Yes (${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(estimatedPrice?.breakdown?.frame || 0)})` : '', hardwareSummary ? `Hardware quantities: ${hardwareSummary}` : ''].filter(Boolean).join('\n\n'),
 
   estimated_price: completeEstimate
-  ? (completeEstimate.low + completeEstimate.high) / 2
+  ? completeEstimate.low
   : null,
 
 estimated_price_low: completeEstimate
@@ -1363,6 +1478,7 @@ function scrollToQuoteContent(element) {
 function renderRequestTracking(result) {
   const order = typeof result?.trackingNumber === 'string' ? result.trackingNumber.trim() : '';
   const code = typeof result?.accessCode === 'string' ? result.accessCode.trim() : '';
+  submittedOrderNumber=order;
   const available = Boolean(order && code);
   document.querySelector('.tracking-credentials').hidden = !available;
   document.querySelector('#request-order-number').textContent = available ? order : '';
@@ -1373,6 +1489,7 @@ function renderRequestTracking(result) {
   const tracking = document.querySelector('#tracking-form');
   tracking.elements.orderNumber.value = available ? order : '';
   tracking.elements.accessCode.value = available ? code : '';
+  updateDepositContactLinks();
   const processingNote = document.querySelector('#request-processing-note');
   processingNote.hidden = true; processingNote.textContent = '';
 }
@@ -1381,12 +1498,72 @@ function showRequestConfirmation() {
   if (!confirmation) return;
   quoteForm.hidden = true;
   confirmation.hidden = false;
-  document.querySelector('#request-confirmation-title').focus({preventScroll:true});
-  scrollToQuoteContent(confirmation);
+  const credentialCard = document.querySelector('#tracking-credentials-card');
+  const hasCredentials = !credentialCard.hidden;
+  const focusTarget = hasCredentials ? document.querySelector('#tracking-credentials-title') : document.querySelector('#request-confirmation-title');
+  if (hasCredentials) {
+    credentialCard.classList.remove('is-entering');
+    credentialCard.querySelectorAll('.credential-value').forEach(value => value.classList.remove('is-emphasized'));
+    credentialCard.querySelector('.credential-track')?.classList.remove('is-attention');
+    void credentialCard.offsetWidth;
+    credentialCard.classList.add('is-entering');
+    credentialCard.querySelectorAll('.credential-value').forEach(value => value.classList.add('is-emphasized'));
+    credentialCard.querySelector('.credential-track')?.classList.add('is-attention');
+    document.querySelector('#credential-copy-status').textContent = '';
+  }
+  focusTarget.focus({preventScroll:true});
+  scrollToQuoteContent(hasCredentials ? credentialCard : confirmation);
 }
+
+async function copyCredentialText(text, button) {
+  const status = document.querySelector('#credential-copy-status');
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } else if (document.execCommand) {
+      const field = document.createElement('textarea');
+      field.value = text;
+      field.setAttribute('readonly', '');
+      field.style.position = 'fixed';
+      field.style.opacity = '0';
+      document.body.append(field);
+      field.select();
+      copied = document.execCommand('copy');
+      field.remove();
+    }
+  } catch {
+    copied = false;
+  }
+  if (!copied) {
+    status.textContent = 'Copy was unavailable. Select and copy the details above.';
+    return;
+  }
+  const originalLabel = button.dataset.copyLabel || button.textContent;
+  button.dataset.copyLabel = originalLabel;
+  button.textContent = 'COPIED ✓';
+  button.classList.add('is-copied');
+  window.setTimeout(() => {
+    button.textContent = originalLabel;
+    button.classList.remove('is-copied');
+  }, 1800);
+}
+
+document.querySelectorAll('[data-copy-credential]').forEach(button => button.addEventListener('click', () => {
+  const id = button.dataset.copyCredential === 'order' ? '#request-order-number' : '#request-tracking-access-code';
+  copyCredentialText(document.querySelector(id).textContent, button);
+}));
+document.querySelector('[data-copy-both]')?.addEventListener('click', event => {
+  const order = document.querySelector('#request-order-number').textContent;
+  const code = document.querySelector('#request-tracking-access-code').textContent;
+  copyCredentialText(`Bruno's Glass & Mirror\nOrder Number: ${order}\nPrivate Access Code: ${code}`, event.currentTarget);
+});
 document.querySelector('[data-review-request]')?.addEventListener('click', () => {
   document.querySelector('#request-confirmation').hidden = true;
   quoteForm.hidden = false;
+  submittedOrderNumber='';
+  updateDepositContactLinks();
   const heading = quoteForm.querySelector('.wizard-step-panel:not([hidden]) .wizard-panel-heading');
   heading?.focus({preventScroll:true});
   scrollToQuoteContent(quoteForm);
@@ -1395,7 +1572,8 @@ document.querySelectorAll('[data-start-project]').forEach(link => link.addEventL
   event.preventDefault();
   document.querySelector('#request-confirmation').hidden = true;
   quoteForm.hidden = false;
-  document.querySelector('[data-jump-step="1"]')?.click();
+  submittedOrderNumber='';
+  updateDepositContactLinks();
   const heading = quoteForm.querySelector('[data-wizard-step="1"] .wizard-panel-heading');
   heading?.focus({preventScroll:true});
   scrollToQuoteContent(quoteForm);
@@ -1459,7 +1637,7 @@ function setupQuoteWizard() {
   const scanChoices = document.createElement('section');
   scanChoices.className = 'scan-measure-choices';
   scanChoices.setAttribute('aria-label', 'Measurement method');
-  scanChoices.innerHTML = `<p class="measurement-title">How would you like to start?</p><div class="scan-measure-actions"><button type="button" class="scan-measure-card" data-scan-camera aria-pressed="false"><span aria-hidden="true">▧</span><strong>Take or Upload a Photo</strong><small>Ask Bruno’s photo analyzer for a project recommendation.</small></button><button type="button" class="scan-measure-card" data-scan-upload aria-pressed="true"><span aria-hidden="true">＋</span><strong>Enter Measurements Manually</strong><small>Measure width and height with a tape. Edit either value before pricing.</small></button></div><p class="scan-ai-notice">Photo analysis recommends a likely project/configuration only. It does not measure your opening. Enter and confirm dimensions with a tape measure; Bruno must field-measure before fabrication.</p><p class="scan-photo-status" role="status" aria-live="polite"></p>`;
+  scanChoices.innerHTML = `<p class="measurement-title">Add a photo or enter dimensions</p><div class="scan-measure-actions"><button type="button" class="scan-measure-card" data-scan-camera aria-pressed="false"><span aria-hidden="true">▧</span><strong>Take or Upload a Photo</strong><small>Ask Bruno’s photo analyzer for a project recommendation.</small></button><button type="button" class="scan-measure-card" data-scan-upload aria-pressed="true"><span aria-hidden="true">＋</span><strong>Enter Measurements Manually</strong><small>Measure width and height with a tape. Edit either value before pricing.</small></button></div><p class="scan-ai-notice">AI dimensions are approximate and require your confirmation. If the photo lacks a reliable size reference, add one straight-on photo with a known-size reference or provide one known measurement. Professional field measurement is required before fabrication.</p><p class="scan-photo-status" role="status" aria-live="polite"></p>`;
   panels[1].prepend(scanChoices);
   const scanCamera = scanChoices.querySelector('[data-scan-camera]');
   const scanUpload = scanChoices.querySelector('[data-scan-upload]');
@@ -1515,10 +1693,6 @@ function setupQuoteWizard() {
   const mirrorLayout = mirrorConfiguration.querySelector('#mirror-layout');
   const estimatePanel = document.querySelector('#estimated-price-panel');
   panels[4].append(estimatePanel);
-  const estimateReview = estimatePanel.cloneNode(true);
-  estimateReview.id = 'details-estimated-price-panel';
-  estimateReview.querySelector('#estimated-price-value').id = 'details-estimated-price-value';
-  panels[6].append(estimateReview);
   original[3].querySelector('.submit-request-heading')?.remove();
   panels[6].append(original[3]);
   const review = document.createElement('section');
@@ -1547,10 +1721,20 @@ function setupQuoteWizard() {
       const detail = document.createElement('dd'); detail.textContent = content;
       details.append(term, detail);
     }
-    const edit = document.createElement('button');
-    edit.type = 'button'; edit.className = 'wizard-back'; edit.textContent = 'Edit measurements & photos';
-    edit.addEventListener('click', () => showStep(2));
-    review.append(title, details, edit);
+    const estimateSummary = document.createElement('section');
+    estimateSummary.className = 'quote-review-estimate';
+    estimateSummary.setAttribute('aria-label', 'Estimate summary');
+    const estimateHeading = document.createElement('h4');
+    estimateHeading.textContent = 'Estimate summary';
+    const estimateDetails = document.createElement('dl');
+    for (const [key, label] of [['range','Estimated range'],['base','Base estimate'],['deposit','Estimated 50% deposit']]) {
+      const term = document.createElement('dt'); term.textContent = label;
+      const detail = document.createElement('dd'); detail.dataset.reviewEstimate = key;
+      estimateDetails.append(term, detail);
+    }
+    estimateSummary.append(estimateHeading, estimateDetails);
+    review.append(title, details, estimateSummary);
+    syncReviewEstimate();
   }
   const modelNote = document.createElement('p');
   modelNote.className = 'model-service-note';
@@ -1567,7 +1751,7 @@ function setupQuoteWizard() {
   validationMessage.className = 'wizard-validation';
   validationMessage.setAttribute('role', 'alert');
   validationMessage.hidden = true;
-  document.querySelector('.wizard-progress').append(validationMessage);
+  quoteForm.prepend(validationMessage);
   quoteForm.addEventListener('change', (event) => {
     const choices = event.target.id === 'service'
       ? panels[0].querySelector('.service-options') : getChoiceList(event.target);
@@ -1585,21 +1769,27 @@ function setupQuoteWizard() {
       ? ['Choose the custom service Bruno will review.', 'Add project photos and preliminary tape measurements.', 'Let us know how to reach you about your request.', 'Review your details and describe the project. Bruno prepares your custom estimate after review.']
       : standardDescriptions.map((description, index) => index === 2 && serviceSelect.value !== 'Shower Doors' ? 'Confirm your project layout; select the material and finish in the next step.' : description);
     panels.forEach((panel, index) => {
+      const sectionPosition = panelIndexes.indexOf(index) + 1;
+      const isVisible = sectionPosition > 0;
       const isCurrent = index === activePanelIndex;
-      panel.hidden = !panelIndexes.includes(index) || !isCurrent;
+      panel.hidden = !isVisible;
+      panel.classList.toggle('is-current', isCurrent);
       panel.classList.toggle('is-entering', animate && isCurrent);
-      panel.setAttribute('aria-hidden', String(!isCurrent));
+      panel.setAttribute('aria-hidden', String(!isVisible));
+      const heading = panel.querySelector('.wizard-panel-heading');
+      if (heading) {
+        heading.querySelector('span').textContent = '';
+        heading.querySelector('h2').textContent = labels[sectionPosition - 1] || '';
+      }
     });
     validationMessage.hidden = true;
     modelNote.hidden = customQuoteService ? true : serviceSelect.value === 'Shower Doors';
     mirrorConfiguration.hidden = customQuoteService || serviceSelect.value !== 'Mirror';
     const activePanel = panels[activePanelIndex];
     const activeHeading = activePanel.querySelector('.wizard-panel-heading');
-    activeHeading.querySelector('span').textContent = `STEP 0${activeStep}`;
+    activeHeading.querySelector('span').textContent = '';
     activeHeading.querySelector('h2').textContent = labels[activeStep - 1];
     activeHeading.querySelector('.wizard-description').textContent = descriptions[activeStep - 1];
-    const nextButton = activePanel.querySelector('.wizard-next');
-    if (nextButton) nextButton.innerHTML = `${activePanelIndex === 1 ? 'Confirm measurements & continue' : activeStep === labels.length - 1 ? 'Review request' : 'Continue'} <span aria-hidden="true">&rarr;</span>`;
     if (animate) activeHeading.focus({ preventScroll: true });
     stepName.textContent = labels[activeStep - 1];
     stepCount.textContent = `STEP ${activeStep} OF ${labels.length}`;
@@ -1613,13 +1803,11 @@ function setupQuoteWizard() {
     });
     if ((!customQuoteService && activeStep === 5) || (customQuoteService && activeStep === labels.length)) updateEstimatedPrice();
     if (activeStep === labels.length) updateReview();
-    if (animate && window.matchMedia('(max-width: 760px)').matches) {
-      scrollToQuoteContent(quoteForm);
-    }
+    if (animate) scrollToQuoteContent(activePanel);
   }
 
-  function stepIsValid() {
-    const activePanel = panels[panelIndexes[activeStep - 1]];
+  function stepIsValid(step = activeStep) {
+    const activePanel = panels[panelIndexes[step - 1]];
     const fields = [...activePanel.querySelectorAll('[required]')];
     const invalid = fields.find((field) => !field.checkValidity());
     if (invalid) {
@@ -1636,7 +1824,7 @@ function setupQuoteWizard() {
       }
       return false;
     }
-    if (panelIndexes[activeStep - 1] === 1) {
+    if (panelIndexes[step - 1] === 1) {
       const invalidMeasurement = [widthInput, heightInput].find((field) => {
         const value = parseConstructionMeasurement(field.value);
         return !Number.isFinite(value) || value <= 0;
@@ -1674,7 +1862,7 @@ function setupQuoteWizard() {
     serviceSelect.hidden = true;
     document.querySelector('#custom-quote-selection-name').textContent = customQuoteService;
     document.querySelector('#custom-quote-selection').hidden = false;
-    showStep(1, false);
+    showStep(2, false);
     renderEstimateDisplays(null, 'Custom quote — Bruno will prepare an estimate after reviewing your project.');
     quoteForm.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'});
   }
@@ -1683,7 +1871,6 @@ function setupQuoteWizard() {
     button.addEventListener('click', event => {
       event.preventDefault();
       startCustomQuote(button.dataset.customService);
-      if (button.hasAttribute('data-quick-start')) document.querySelector('.wizard-step-panel:not([hidden]) .wizard-next')?.click();
     });
   });
   document.querySelector('[data-change-quote-service]')?.addEventListener('click', () => {
@@ -1700,46 +1887,24 @@ function setupQuoteWizard() {
     updateEstimatedPrice();
   });
 
-  panels.forEach((panel, index) => {
-    if (index < labels.length - 1) {
-      const actions = document.createElement('div');
-      actions.className = 'wizard-actions';
-      if (index > 0) {
-        const back = document.createElement('button');
-        back.type = 'button'; back.className = 'wizard-back'; back.textContent = 'Back';
-        back.addEventListener('click', () => showStep(activeStep - 1));
-        actions.append(back);
-      } else {
-        actions.append(document.createElement('span'));
-      }
-      const next = document.createElement('button');
-      next.type = 'button'; next.className = 'button button-dark wizard-next';
-      next.innerHTML = `${index === labels.length - 2 ? 'Review estimate' : 'Continue'} <span aria-hidden="true">&rarr;</span>`;
-      next.addEventListener('click', () => { if (stepIsValid()) showStep(activeStep + 1); });
-      actions.append(next);
-      panel.append(actions);
-    } else {
-      const submit = panel.querySelector('button[type="submit"]');
-      if (submit) submit.innerHTML = 'REQUEST A QUOTE <span aria-hidden="true">&rarr;</span>';
-      const back = document.createElement('button');
-      back.type = 'button'; back.className = 'wizard-back'; back.textContent = 'Back to details';
-      back.addEventListener('click', () => showStep(labels.length - 1));
-      const submitSection = panel.matches('.form-submit') ? panel : panel.querySelector('.form-submit');
-      submitSection?.prepend(back);
-    }
+  const submitButton = panels[6].querySelector('button[type="submit"]');
+  if (submitButton) submitButton.textContent = 'SUBMIT QUOTE REQUEST';
+  panels.forEach((panel,index)=>{
+    const position=panelIndexes.indexOf(index)+1;
+    if(position<1||position>=labels.length)return;
+    const actions=document.createElement('div');actions.className='wizard-actions';actions.hidden=true;actions.setAttribute('aria-hidden','true');
+    if(position>1){const back=document.createElement('button');back.type='button';back.className='wizard-back';back.textContent='Back';back.hidden=true;back.setAttribute('aria-hidden','true');back.addEventListener('click',()=>showStep(position-1));actions.append(back);}
+    const next=document.createElement('button');next.type='button';next.className='wizard-next';next.textContent='Next';next.hidden=true;next.setAttribute('aria-hidden','true');next.addEventListener('click',()=>{if(stepIsValid(position))showStep(position+1);});actions.append(next);panel.append(actions);
   });
-  stepList.addEventListener('click', event => {
-    const button = event.target.closest('[data-jump-step]');
-    if (button && !button.disabled) showStep(Number(button.dataset.jumpStep));
+  serviceSelect.addEventListener('change', () => {
+    updateProjectReference();
+    if (serviceSelect.value && !customQuoteService) showStep(2, false);
+    updateCustomOptionFields();
   });
-  quoteForm.addEventListener('submit', (event) => {
-    if (activeStep !== labels.length) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (stepIsValid()) showStep(activeStep + 1);
-    }
-  }, true);
   showStep(1, false);
+  quoteForm.addEventListener('input', updateReview);
+  quoteForm.addEventListener('change', updateReview);
+  updateReview();
   document.querySelector('.sales-hero')?.after(document.querySelector('#quote'));
 }
 
@@ -1860,13 +2025,15 @@ document.querySelectorAll('[data-quick-service]').forEach(button => button.addEv
     productSelect.dispatchEvent(new Event('change', {bubbles:true}));
   }
   if (button.dataset.mirrorPlacement) document.querySelector('#mirror-layout').value = button.dataset.mirrorPlacement;
-  document.querySelector('.wizard-step-panel:not([hidden]) .wizard-next')?.click();
   quoteForm.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'});
 }));
 
 document.querySelectorAll('.hardware-count-grid input').forEach((field) => {
   field.addEventListener('input', updateEstimatedPrice);
 });
+glassTypeSelect?.addEventListener('change', () => { updateCustomOptionFields(); updateEstimatedPrice(); });
+hardwareFinishSelect?.addEventListener('change', updateCustomOptionFields);
+glassOtherDescription?.addEventListener('input', updateEstimatedPrice);
 window.addEventListener('focus', updateEstimatedPrice);
 
 document.querySelector('#enduro-shield').addEventListener('change', updateEstimatedPrice);

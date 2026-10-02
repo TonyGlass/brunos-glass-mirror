@@ -15,6 +15,8 @@ const entries=Array.isArray(keys)?keys:(Array.isArray(keys?.keys)?keys.keys:[]);
 const publishable=entries.find(row=>row?.type==='publishable'&&typeof row.api_key==='string'&&row.api_key.startsWith('sb_publishable_'))?.api_key;
 if(!publishable)throw Error('A Supabase sb_publishable_ key is required; secret keys are never used in the browser.');
 cpSync(resolve('dist'),outputDir,{recursive:true,errorOnExist:true});
+const stagingQrAssets=resolve('staging-assets','referral-qr');
+if(existsSync(stagingQrAssets))cpSync(stagingQrAssets,resolve(outputDir,'images','referral-qr'),{recursive:true,force:true});
 const stageConfig=`// Public frontend settings for the isolated staging project only.\nglobalThis.BRUNO_PUBLIC_CONFIG=Object.freeze({supabaseUrl:'https://${projectRef}.supabase.co',supabasePublishableKey:'${publishable}'});\n`;
 writeFileSync(resolve(outputDir,'runtime-config.js'),stageConfig);
 for(const page of ['index.html','admin.html']){

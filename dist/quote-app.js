@@ -1,35 +1,44 @@
-// Reuse the existing form and website; a hash identifies the focused task view.
+// Keep the public root focused on the quotation wizard. The tracking view is
+// available from the compact application navigation and the submission screen.
 (() => {
   const bar = document.createElement('nav');
-  bar.className = 'quote-app-bar'; bar.setAttribute('aria-label','Quotation application');
-  bar.innerHTML = `<a href="#top" data-exit-quote>← Back to website</a><strong data-app-title>Request a quote</strong><a href="#tracking">Track project</a>`;
-  document.querySelector('.quote-header').after(bar);
+  bar.className = 'quote-app-bar';
+  bar.setAttribute('aria-label', 'Quotation application');
+  bar.innerHTML = '<strong data-app-title>Project quotation</strong><a data-task-link href="#tracking">Track Your Project</a>';
+  document.querySelector('.quote-header')?.after(bar);
+
   function setView(view) {
-    const active = view === 'quote' || view === 'tracking';
-    document.body.classList.toggle('quote-app-active', active);
-    document.body.dataset.taskView = active ? view : '';
-    bar.querySelector('[data-app-title]').textContent = view === 'tracking' ? 'Track your project' : 'Request a quote';
-    if (active) {
-      document.querySelector('#site-nav').classList.remove('is-open');
-      document.querySelector('.menu-toggle').setAttribute('aria-expanded','false');
-      document.querySelector('.floating-contact').setAttribute('aria-expanded','false');
-      document.querySelector('#contact').hidden = true;
-    }
+    const normalized = view === 'tracking' ? 'tracking' : 'quote';
+    document.body.classList.add('quote-app-active');
+    document.body.dataset.taskView = normalized;
+    bar.querySelector('[data-app-title]').textContent = normalized === 'tracking' ? 'Track Your Project' : 'Project quotation';
+    const taskLink = bar.querySelector('[data-task-link]');
+    taskLink.href = normalized === 'tracking' ? '#quote' : '#tracking';
+    taskLink.textContent = normalized === 'tracking' ? 'Return to quotation' : 'Track Your Project';
+    const nav = document.querySelector('#site-nav');
+    if (nav) nav.classList.remove('is-open');
+    const menu = document.querySelector('.menu-toggle');
+    menu?.setAttribute('aria-expanded', 'false');
+    const contact = document.querySelector('#contact');
+    if (contact) contact.hidden = true;
+    document.querySelector('.floating-contact')?.setAttribute('aria-expanded', 'false');
   }
-  function route() { setView(location.hash === '#quote' ? 'quote' : location.hash === '#tracking' ? 'tracking' : ''); }
+
+  function route() {
+    setView(location.hash === '#tracking' ? 'tracking' : 'quote');
+  }
+
   document.addEventListener('click', event => {
-    const target = event.target.closest('a, button'); if (!target) return;
+    const target = event.target.closest('a, button');
+    if (!target) return;
     const href = target.getAttribute('href');
-    if (target.matches('[data-start-project], [data-custom-service]') || href === '#quote' || target.matches('[data-select="service"]')) {
-      setView('quote');
-      if (location.hash !== '#quote') history.pushState(null,'','#quote');
-    } else if (href === '#tracking') {
-      setView('tracking');
-    } else if (target.matches('[data-exit-quote], .quote-header .brand')) {
-      setView('');
-    } else if (href?.startsWith('#') && !target.closest('#quote')) {
-      setView('');
-    }
+    if (href === '#tracking' || href === '#quote') {
+      // setView updates this navigation link's href. Prevent the browser's
+      // default action from reading that new href instead of the clicked one.
+      event.preventDefault();
+      setView(href === '#tracking' ? 'tracking' : 'quote');
+      if (location.hash !== href) location.hash = href;
+    } else if (target.matches('[data-start-project], [data-custom-service], [data-quick-service], [data-quick-start], [data-exit-quote], .quote-header .brand')) setView('quote');
   }, true);
   window.addEventListener('hashchange', route);
   window.addEventListener('popstate', route);

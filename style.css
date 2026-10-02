@@ -1458,6 +1458,9 @@ body { background: #f4f6f5; }
 .quote-review-summary dt { font-weight:700; }
 .quote-review-summary dd { margin:0; overflow-wrap:anywhere; }
 .quote-review-summary button { margin-top:16px; }
+.quote-review-estimate { margin-top:20px; padding-top:16px; border-top:1px solid #d9e1df; }
+.quote-review-estimate h4 { margin:0 0 12px; color:var(--navy); }
+.quote-review-estimate dl { margin:0; }
 .quotation-page .quote.section-pad { padding: clamp(34px,5vw,68px) 0; background:#f3f5f4; }
 .quotation-page .quote-grid { display:block; }
 .quotation-page .quote-intro { display:none; }
@@ -1501,6 +1504,7 @@ body { background: #f4f6f5; }
 .quotation-page .estimated-base-value { font-size:15px; }
 .quotation-page .estimated-deposit-label { margin-top:22px; }
 .quotation-page .estimated-deposit-value { font-size:21px; font-weight:700; }
+.quotation-page .estimated-deposit-value.has-price { color:#09274d; font:850 clamp(30px,5.4vw,44px)/1.12 'Manrope',sans-serif; letter-spacing:-.035em; }
 .quotation-page .live-estimated-price-panel { position:relative; }
 .quotation-page .wizard-step-panel[data-wizard-step="5"] .wizard-actions { margin-top:18px; }
 .quotation-page .quote-form .form-grid-contact { grid-template-columns:repeat(2,minmax(0,1fr)); }

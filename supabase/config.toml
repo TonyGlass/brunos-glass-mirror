@@ -3,3 +3,11 @@ verify_jwt = false
 
 [functions.admin-quotes]
 verify_jwt = true
+
+# Public estimates; Admin read/save authenticate inside the pricing function.
+[functions.pricing]
+verify_jwt = false
+
+# Public photo classification; provider credentials remain server-side.
+[functions.analyze-photo]
+verify_jwt = false

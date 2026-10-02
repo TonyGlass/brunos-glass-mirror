@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Straight bathtub with hinged door and fixed glass panel</title>
+  <desc id="desc">A straight alcove bathtub viewed from the front, with one fixed glass panel beside one hinged, operable glass door. Diagram, not to scale.</desc>
+  <rect width="640" height="420" fill="#f4f6f5"/>
+  <path d="M88 278h464v42a58 58 0 0 1-58 58H146a58 58 0 0 1-58-58z" fill="#e8e2d6" stroke="#334c61" stroke-width="8"/>
+  <path d="M132 264V96h376v168" fill="none" stroke="#6d8b9c" stroke-width="7"/>
+  <path d="M152 112h176v142H152zM334 112h134v142H334z" fill="#dcebf0" fill-opacity=".72" stroke="#6d8b9c" stroke-width="5"/>
+  <path d="M160 145v18m0 20v18" stroke="#b58a48" stroke-width="6"/>
+  <path d="M332 254a132 132 0 0 0 132-132" fill="none" stroke="#b58a48" stroke-width="4" stroke-dasharray="8 8"/>
+  <circle cx="332" cy="254" r="6" fill="#b58a48"/>
+  <text x="320" y="405" text-anchor="middle" fill="#52677a" font-family="sans-serif" font-size="17" letter-spacing="2">STRAIGHT TUB · FIXED + HINGED · DIAGRAM NOT TO SCALE</text>
+</svg>

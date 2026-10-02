@@ -49,6 +49,7 @@ const QUOTE_COLUMNS = [
   'estimated_price_high',
   'photo_paths'
   ,'tracking_number','project_status','assigned_technician','verified_width','verified_height','measurement_completed_at',
+  'ai_estimated_width','ai_estimated_height','customer_confirmed_width','customer_confirmed_height','measurement_confidence','measurement_source',
   'technician_notes','measurement_photo_paths','assigned_installer','installation_status','installation_scheduled_at',
   'installer_notes','installation_photo_paths','installation_completed_at','final_quote_draft_price','final_quote_draft_scope',
   'final_quote_draft_date','final_quote_draft_expires_at','final_quote_sent_at','final_quote_scope','final_quote_date',

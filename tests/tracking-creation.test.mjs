@@ -21,7 +21,7 @@ function setup({uploadFails = false, secret = 'local-only-secret'} = {}) {
     Deno:{env:{get:key=>key==='SUPABASE_SECRET_KEYS' ? '{"default":"local"}' : key==='QUOTE_UPLOAD_TOKEN_SECRET' ? secret : 'local'},serve:fn=>{handler=fn}},
     Request,Response,Headers,crypto,btoa,atob,TextEncoder,console});
   const call=body=>handler(new Request('https://local/submit-quote',{method:'POST',body:JSON.stringify(body)}));
-  const create=()=>call({action:'create',pricing:{customQuote:true},quote:{service:'Glass',product:'Glass Door',tracking_number:'FORGED',tracking_token_hash:'FORGED',name:'Private Name',email:'private@example.com'},files:[{name:'opening.png',size:20,type:'image/png'}]});
+  const create=()=>call({action:'create',pricing:{customQuote:true},quote:{service:'Glass',product:'Glass Door',width:60,height:72,customer_confirmed_width:60,customer_confirmed_height:72,measurement_source:'customer_manual',tracking_number:'FORGED',tracking_token_hash:'FORGED',name:'Private Name',email:'private@example.com'},files:[{name:'opening.png',size:20,type:'image/png'}]});
   return {rows,call,create};
 }
 

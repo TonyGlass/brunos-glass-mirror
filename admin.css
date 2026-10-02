@@ -54,6 +54,8 @@ h2 { margin-bottom: 0; color: var(--navy); font: 500 28px/1.1 var(--serif); }
 .login-form input:focus, .detail-field input:focus, .detail-field select:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(145,199,210,.24); }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 14px; border: 1px solid transparent; border-radius: 2px; padding: 13px 17px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .login-form .button { margin-top: 20px; }
+.login-recovery-link { display: inline-block; margin-top: 18px; padding: 0; border: 0; color: var(--navy); background: transparent; font: 11px var(--mono); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.login-recovery-link:focus-visible { outline: 2px solid var(--navy); outline-offset: 4px; }
 .button-accent { color: var(--navy); background: var(--blue); }
 .button-dark { color: var(--white); background: var(--navy); }
 .button-quiet { color: var(--navy); border-color: #b8c6c2; background: transparent; }

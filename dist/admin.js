@@ -14,6 +14,8 @@ const PROJECT_WORKSPACE_KEY = 'brunoProjectWorkspaceV1';
 const loginPanel = document.querySelector('#login-panel');
 const crmPanel = document.querySelector('#crm-panel');
 const loginForm = document.querySelector('#login-form');
+const passwordRecoveryForm = document.querySelector('#password-recovery-form');
+const passwordRecoveryButton = document.querySelector('#request-password-reset');
 const loginStatus = document.querySelector('#login-status');
 const crmStatus = document.querySelector('#crm-status');
 const quotesBody = document.querySelector('#quotes-body');
@@ -24,6 +26,18 @@ const quotes = new Map();
 let selectedQuoteId = null;
 let adminSessionActive = false;
 let quoteLoadVersion = 0;
+let passwordRecoveryActive = ['recovery', 'invite'].includes(new URLSearchParams(location.hash.replace(/^#/, '')).get('type')) || new URLSearchParams(location.search).has('code');
+
+function showPasswordRecovery() {
+  passwordRecoveryActive = true;
+  loginPanel.hidden = false;
+  crmPanel.hidden = true;
+  loginForm.hidden = true;
+  passwordRecoveryButton.hidden = true;
+  passwordRecoveryForm.hidden = false;
+  setStatus(loginStatus, 'Choose a new password for your Admin account.');
+  document.querySelector('#new-admin-password').focus();
+}
 
 function workspaceFor(quote) {
   try {
@@ -262,7 +276,7 @@ function estimateLabel(quote) {
   if (lowValue === null || lowValue === undefined || lowValue === '' ||
       highValue === null || highValue === undefined || highValue === '' ||
       !Number.isFinite(low) || !Number.isFinite(high) || low < 0 || high < low) return 'Not recorded';
-  return `${formatMoney(low)}–${formatMoney(high + 150)}`;
+  return low === high ? formatMoney(low) : `${formatMoney(low)}–${formatMoney(high)}`;
 }
 
 function referralSourceLabel(quote) {
@@ -324,13 +338,13 @@ function detailField(label, value, full = false, mono = false) {
 
 function renderDetail(quote) {
   const hasEstimate = quote.estimated_price_low !== null && quote.estimated_price_high !== null;
-  const estimateMidpoint = hasEstimate
-    ? (Number(quote.estimated_price_low) + Number(quote.estimated_price_high)) / 2
+  const estimateBase = hasEstimate
+    ? Number(quote.estimated_price ?? quote.estimated_price_low)
     : Number(quote.estimated_price || 0);
   const finalPrice = quote.final_price === null ? null : Number(quote.final_price);
   const finalDifference = finalPrice === null
     ? 'Pending final price'
-    : hasEstimate ? formatMoney(finalPrice - estimateMidpoint) : 'No estimate saved';
+    : hasEstimate ? formatMoney(finalPrice - estimateBase) : 'No estimate saved';
   // Server-returned quote values are the only source for persisted status/pricing.
   ProjectWorkflow.dispose();
   detail.innerHTML = ProjectWorkflow.render(quote, {
@@ -477,6 +491,64 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
+passwordRecoveryButton.addEventListener('click', async () => {
+  if (!supabaseClient?.auth) {
+    setStatus(loginStatus, 'Password recovery is unavailable. Reload the page and try again.', true);
+    return;
+  }
+  const email = document.querySelector('#login-email').value.trim();
+  if (!email) {
+    setStatus(loginStatus, 'Enter your Admin email above, then request a reset link.', true);
+    document.querySelector('#login-email').focus();
+    return;
+  }
+  passwordRecoveryButton.disabled = true;
+  setStatus(loginStatus, 'Requesting a secure password reset link...');
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/admin.html`
+    });
+    if (error) throw error;
+    setStatus(loginStatus, 'If this address belongs to an Admin account, password reset instructions have been sent. Check your inbox.');
+  } catch {
+    setStatus(loginStatus, 'Could not request a reset link. Check the email address and try again.', true);
+  } finally {
+    passwordRecoveryButton.disabled = false;
+  }
+});
+
+passwordRecoveryForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = document.querySelector('#new-admin-password').value;
+  const confirmation = document.querySelector('#confirm-admin-password').value;
+  if (password.length < 12) {
+    setStatus(loginStatus, 'Use a password with at least 12 characters.', true);
+    return;
+  }
+  if (password !== confirmation) {
+    setStatus(loginStatus, 'The passwords do not match.', true);
+    return;
+  }
+  const submit = passwordRecoveryForm.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  setStatus(loginStatus, 'Updating your password...');
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) throw error;
+    await supabaseClient.auth.signOut();
+    passwordRecoveryForm.reset();
+    passwordRecoveryForm.hidden = true;
+    loginForm.hidden = false;
+    passwordRecoveryButton.hidden = false;
+    passwordRecoveryActive = false;
+    setStatus(loginStatus, 'Password updated. Sign in with your new password.');
+  } catch (error) {
+    setStatus(loginStatus, error.message || 'Could not update the password. Request a new reset link.', true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
 document.querySelector('#sign-out').addEventListener('click', async () => {
   if (!supabaseClient?.auth) {
     setStatus(loginStatus,'Admin authentication is unavailable. Reload the page and try again.',true);
@@ -495,11 +567,17 @@ setInterval(() => {
 if (supabaseClient?.auth) {
   // Register handlers before starting async auth work. Pricing form prevention
   // is already active if session lookup later fails.
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  if (passwordRecoveryActive) showPasswordRecovery();
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      showPasswordRecovery();
+      return;
+    }
+    if (passwordRecoveryActive) return;
     setTimeout(() => showCrm(session), 0);
   });
   supabaseClient.auth.getSession()
-    .then(({ data: { session } }) => showCrm(session))
+    .then(({ data: { session } }) => passwordRecoveryActive ? showPasswordRecovery() : showCrm(session))
     .catch(error => {
       console.error('Admin session initialization failed.',error);
       loginPanel.hidden = false;

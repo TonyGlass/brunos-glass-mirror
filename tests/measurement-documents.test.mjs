@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {createPreliminaryDocument, createFinalQuoteDocument, renderFinalQuoteHtml} from '../quote-document.mjs';
 import {prepareQuoteConfirmation, deliverQuoteConfirmation} from '../supabase/functions/_shared/quote-email.mjs';
+import {constrainShowerRecommendations,isShowerConfigurationCompatible} from '../supabase/functions/_shared/photo-geometry.mjs';
 
 const context = vm.createContext({AbortController, Intl});
 vm.runInContext(readFileSync(new URL('../measurement.js',import.meta.url),'utf8'),context);
@@ -65,19 +66,76 @@ test('recommendations require entered shower facts and never infer geometry or c
   assert.deepEqual(plain(measurement.recommend({projectType:'Shower Doors',placement:'shower',openingGeometry:'straight',availableClearance:10})),[]);
 });
 
-test('vision integration is a server-only classifier with no dimension output and honest unavailable fallback',()=>{
+test('vision integration returns only responsible approximate measurements and honest low-confidence fallback',()=>{
   const endpoint=readFileSync(new URL('../supabase/functions/analyze-photo/index.ts',import.meta.url),'utf8');
   assert.match(endpoint,/Deno\.env\.get\('OPENAI_API_KEY'\)/);
   assert.match(endpoint,/api\.openai\.com\/v1\/responses/);
   assert.match(endpoint,/store:false/);
   assert.match(endpoint,/if\(!key\)return reply\(\{error:'Photo analysis is not configured/);
   assert.match(endpoint,/upstream durable rate limit/);
-  assert.doesNotMatch(endpoint,/width\s*:\s*\{|height\s*:\s*\{|"width"\s*,\s*"height"/);
+  assert.match(endpoint,/measurement\s*=\s*dimensionsVisible/);
+  assert.match(endpoint,/confidence>=\.75/);
+  assert.match(endpoint,/openingBox/);
   const client=readFileSync(new URL('../measurement.js',import.meta.url),'utf8');
   assert.match(client,/data-analyze-photo/);
-  assert.match(client,/Photo analysis does not measure dimensions/);
-  assert.match(client,/Manual configuration and tape measurements remain available/);
+  assert.match(client,/AI ESTIMATED — PLEASE CONFIRM/);
+  assert.match(client,/data-confirm-ai-measurement/);
+  assert.match(client,/known-size reference/);
+  assert.match(client,/getMeasurementRecord/);
   assert.doesNotMatch(client,/OPENAI_API_KEY/);
+  assert.match(endpoint,/geometryConfidence/);
+  assert.match(endpoint,/constrainShowerRecommendations/);
+});
+
+test('photo recommendations filter by geometry before applying catalog priority',()=>{
+  const recs=[
+    {configuration:'Fixed Panel / Walk-In',reason:'walk in'},
+    {configuration:'90° Corner',reason:'corner'},
+    {configuration:'Swing Door + Fixed Panel',reason:'hinged'},
+    {configuration:'Sliding Door',reason:'slider'},
+    {configuration:'Tub Enclosure',reason:'tub'},
+    {configuration:'Neo-Angle',reason:'unmapped'}
+  ];
+
+  // A straight tub returns only existing straight-tub catalog items, in
+  // Bruno's priority order, even if the model ranked incompatible layouts first.
+  const tub=constrainShowerRecommendations({geometry:'straight_tub_alcove',geometryConfidence:.92,recommendations:recs});
+  assert.equal(tub.geometry,'straight_tub_alcove');
+  assert.deepEqual(tub.recommendations.map(r=>r.configuration),['Tub Enclosure','Sliding Door']);
+  assert.ok(!tub.recommendations.some(r=>['90° Corner','Neo-Angle','Fixed Panel / Walk-In','Swing Door + Fixed Panel'].includes(r.configuration)));
+  assert.equal(isShowerConfigurationCompatible('straight_tub_alcove','Sliding Door'),true);
+  assert.equal(isShowerConfigurationCompatible('straight_tub_alcove','Swing Door + Fixed Panel'),false);
+
+  // A small straight shower can use only the existing straight-opening family.
+  const straight=constrainShowerRecommendations({geometry:'straight_shower_opening',geometryConfidence:.9,recommendations:recs});
+  assert.deepEqual(straight.recommendations.map(r=>r.configuration),['Sliding Door','Swing Door + Fixed Panel','Fixed Panel / Walk-In']);
+  assert.ok(!straight.recommendations.some(r=>r.configuration==='90° Corner'||r.configuration==='Tub Enclosure'));
+
+  // A real corner allows the existing corner model; neo-angle has no catalog
+  // mapping and remains an explicit Not Sure request rather than an invention.
+  const corner=constrainShowerRecommendations({geometry:'corner_90',geometryConfidence:.88,recommendations:recs});
+  assert.deepEqual(corner.recommendations.map(r=>r.configuration),['90° Corner']);
+  const neo=constrainShowerRecommendations({geometry:'neo_angle',geometryConfidence:.9,recommendations:recs});
+  assert.deepEqual(neo.recommendations.map(r=>r.configuration),['Not Sure / Let Bruno’s recommend it']);
+  assert.equal(isShowerConfigurationCompatible('neo_angle','Neo-Angle'),false);
+
+  const unclear=constrainShowerRecommendations({geometry:'unclear',geometryConfidence:.3,recommendations:recs});
+  assert.equal(unclear.geometry,'unclear');
+  assert.deepEqual(unclear.recommendations.map(r=>r.configuration),['Not Sure / Let Bruno’s recommend it']);
+
+  const lowConfidence=constrainShowerRecommendations({geometry:'straight_tub_alcove',geometryConfidence:.64,recommendations:recs});
+  assert.equal(lowConfidence.geometry,'unclear');
+  assert.deepEqual(lowConfidence.recommendations.map(r=>r.configuration),['Not Sure / Let Bruno’s recommend it']);
+});
+
+test('recommendation imagery is selected by both geometry and configuration',()=>{
+  assert.equal(measurement.getConfigurationImage('straight_tub_alcove','Tub Enclosure'),'images/reference/shower-tub.jpg');
+  assert.equal(measurement.getConfigurationImage('straight_tub_alcove','Sliding Door'),'images/configurations/tub-sliding.svg');
+  assert.equal(measurement.getConfigurationImage('straight_tub_alcove','Swing Door + Fixed Panel','customer-photo.jpg'),'customer-photo.jpg');
+  assert.equal(measurement.getConfigurationImage('straight_shower_opening','Swing Door + Fixed Panel'),'images/configurations/shower-swing-fixed.svg');
+  assert.equal(measurement.getConfigurationImage('corner_90','90° Corner'),'images/reference/shower-corner.jpg');
+  assert.equal(measurement.getConfigurationImage('straight_tub_alcove','90° Corner','customer-photo.jpg'),'customer-photo.jpg');
+  assert.equal(measurement.getConfigurationImage('unclear','Not Sure / Let Bruno’s recommend it','customer-photo.jpg'),'customer-photo.jpg');
 });
 
 test('six shower layouts map to distinct category-matched cropped photos',()=>{
@@ -92,7 +150,7 @@ test('six shower layouts map to distinct category-matched cropped photos',()=>{
   }
 });
 
-const quote = {tracking_number:'BGM-2026-00001',name:'Customer',phone:'9545550100',email:'customer@example.com',installation_address:'123 Example St',city:'Hollywood',service:'Shower Doors',product:'Sliding Door',glass_type:'Low-Iron Glass - 3/8',width:60.25,height:72.125,square_feet:30.1773,quantity:1,message:'Please review clearance',estimated_price_low:1800,estimated_price_high:1800,created_at:'2026-09-30T12:00:00Z',final_price:2400,final_quote_draft_price:99999,tracking_token_hash:'never-copy',accessCode:'never-copy'};
+const quote = {tracking_number:'BGM-2026-00001',name:'Customer',phone:'9545550100',email:'customer@example.com',installation_address:'123 Example St',city:'Hollywood',service:'Shower Doors',product:'Sliding Door',glass_type:'Low-Iron Glass - 3/8',width:60.25,height:72.125,square_feet:30.1773,quantity:1,message:'Please review clearance',estimated_price_low:1980,estimated_price_high:2178,created_at:'2026-09-30T12:00:00Z',final_price:2400,final_quote_draft_price:99999,tracking_token_hash:'never-copy',accessCode:'never-copy'};
 test('preliminary document supports PDF fields without becoming an authoritative Final Quote or receipt',()=>{
   const document = createPreliminaryDocument({quote,pricingRevision:3,dimensions:{widthText:'60 1/4',heightText:'72 1/8'},options:['EnduroShield'],photos:[{name:'opening.png',storagePath:'quotes/abc/opening.png',signedUrl:'https://secret',caption:'Opening'}],preparedAt:'2026-09-30T13:00:00Z'});
   assert.equal(document.kind,'preliminary-estimate'); assert.equal(document.authoritative,false);
@@ -100,9 +158,9 @@ test('preliminary document supports PDF fields without becoming an authoritative
   assert.equal(document.customer.address,quote.installation_address);
   assert.equal(document.project.measurements.width,'60 1/4'); assert.equal(document.project.measurements.approximate,true);
   assert.equal(document.project.photos[0].storagePath,'quotes/abc/opening.png');
-  assert.deepEqual(document.pricing.baseEstimate,{low:1800,high:1800});
-  assert.deepEqual(document.pricing.customerEstimateRange,{low:1800,high:1950});
-  assert.deepEqual(document.pricing.estimatedDeposit,{low:900,high:900});
+  assert.equal(document.pricing.baseEstimate,1980);
+  assert.deepEqual(document.pricing.customerEstimateRange,{low:1980,high:2178});
+  assert.equal(document.pricing.estimatedDeposit,990);
   assert.equal(document.pricing.finalPrice,null); assert.equal(document.pricing.finalApprovedPrice,null); assert.equal(document.pricing.finalDeposit,null);
   assert.equal(document.pricingRevision,3);
   assert.match(document.disclaimer,/professional review and field measurement/);

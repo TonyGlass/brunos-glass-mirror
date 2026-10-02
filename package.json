@@ -5,6 +5,6 @@
     "test:all": "npm test && npm run test:browser"
   },
   "devDependencies": {
-    "supabase": "^2.117.0"
+    "supabase": "^2.119.0"
   }
 }

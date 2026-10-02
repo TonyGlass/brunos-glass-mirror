@@ -6,13 +6,22 @@ const projectRef=process.argv[2];
 if(!/^[a-z]{20}$/.test(projectRef||''))throw Error('Pass the dedicated staging project ref.');
 const outputDir=resolve('.staging-dist');
 if(existsSync(outputDir))throw Error('Staging output already exists; preserving it. Move it aside yourself before rebuilding.');
-const cliPath=resolve(process.env.APPDATA||'','npm','node_modules','supabase','dist','supabase.js');
-const result=spawnSync(process.execPath,[cliPath,'projects','api-keys','--project-ref',projectRef,'--output-format','json'],{encoding:'utf8',windowsHide:true});
-if(result.status!==0)throw Error(`Could not read staging public-key metadata (status ${result.status??'unavailable'}). No key values were printed.`);
-let keys;
-try{keys=JSON.parse(result.stdout);}catch{throw Error('Staging key metadata was not valid JSON.');}
-const entries=Array.isArray(keys)?keys:(Array.isArray(keys?.keys)?keys.keys:[]);
-const publishable=entries.find(row=>row?.type==='publishable'&&typeof row.api_key==='string'&&row.api_key.startsWith('sb_publishable_'))?.api_key;
+let publishable=process.env.BRUNO_STAGING_PUBLISHABLE_KEY;
+
+if(publishable){
+  if(!publishable.startsWith('sb_publishable_')){
+    throw Error('BRUNO_STAGING_PUBLISHABLE_KEY is not a valid Supabase publishable key.');
+  }
+}else{
+  const cliPath=resolve(process.env.APPDATA||'','npm','node_modules','supabase','dist','supabase.js');
+  const result=spawnSync(process.execPath,[cliPath,'projects','api-keys','--project-ref',projectRef,'--output-format','json'],{encoding:'utf8',windowsHide:true});
+  if(result.status!==0)throw Error(`Could not read staging public-key metadata (status ${result.status??'unavailable'}). No key values were printed.`);
+  let keys;
+  try{keys=JSON.parse(result.stdout);}catch{throw Error('Staging key metadata was not valid JSON.');}
+  const entries=Array.isArray(keys)?keys:(Array.isArray(keys?.keys)?keys.keys:[]);
+  publishable=entries.find(row=>row?.type==='publishable'&&typeof row.api_key==='string'&&row.api_key.startsWith('sb_publishable_'))?.api_key;
+}
+
 if(!publishable)throw Error('A Supabase sb_publishable_ key is required; secret keys are never used in the browser.');
 cpSync(resolve('dist'),outputDir,{recursive:true,errorOnExist:true});
 const stagingQrAssets=resolve('staging-assets','referral-qr');

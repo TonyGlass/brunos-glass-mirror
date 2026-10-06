@@ -11,3 +11,7 @@ verify_jwt = false
 # Public photo classification; provider credentials remain server-side.
 [functions.analyze-photo]
 verify_jwt = false
+
+# Public AI shower visualization; provider credentials remain server-side.
+[functions.preview-shower]
+verify_jwt = false

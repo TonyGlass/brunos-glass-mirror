@@ -190,6 +190,42 @@ Deno.serve(async request => {
         ? body.geometry.trim()
         : '';
 
+    const glassType =
+      typeof body?.glassType === 'string'
+        ? body.glassType.trim()
+        : '';
+
+    const hardwareFinish =
+      typeof body?.hardwareFinish === 'string'
+        ? body.hardwareFinish.trim()
+        : '';
+
+    const handleStyle =
+      typeof body?.handleStyle === 'string'
+        ? body.handleStyle.trim()
+        : '';
+
+    const approvedGlassTypes = [
+      'Clear Glass - 3/8',
+      'Low-Iron Glass - 3/8',
+      'Reeded / Moru - 3/8',
+      'Satin Acid-Etched - 3/8',
+      'Satin Acid-Etched Low-Iron - 3/8'
+    ];
+
+    const approvedHardwareFinishes = [
+      'Brushed Gold',
+      'Brushed Nickel',
+      'Chrome',
+      'Matte Black'
+    ];
+
+    const approvedHandleStyles = [
+      'Ladder Handle',
+      'Round Handle',
+      'Square Handle'
+    ];
+
     if (
       !SHOWER_CONFIGURATIONS.includes(configuration) ||
       configuration.startsWith('Not Sure')
@@ -208,6 +244,25 @@ Deno.serve(async request => {
     ) {
       return reply(
         { error: 'The selected shower configuration is not compatible with this opening.' },
+        400,
+        origin
+      );
+    }
+
+    if (
+      !approvedGlassTypes.includes(glassType) ||
+      !approvedHardwareFinishes.includes(hardwareFinish)
+    ) {
+      return reply(
+        { error: 'Choose an approved glass type and hardware finish before generating a preview.' },
+        400,
+        origin
+      );
+    }
+
+    if (handleStyle && !approvedHandleStyles.includes(handleStyle)) {
+      return reply(
+        { error: 'Choose an approved handle style before generating a preview.' },
         400,
         origin
       );
@@ -234,10 +289,13 @@ Deno.serve(async request => {
       'Create a photorealistic conceptual shower-glass visualization by editing the supplied customer photo.',
       `Install only this approved Bruno's Glass shower configuration: ${configuration}.`,
       `The classified opening geometry is: ${geometry}.`,
+      `Use this approved glass selection: ${glassType}.`,
+      `Use this approved hardware finish: ${hardwareFinish}.`,
+      ...(handleStyle ? [`Use this approved handle style: ${handleStyle}.`] : []),
       'Preserve the original photograph as faithfully as possible.',
       'Do not redesign, replace, remove, move, crop, repaint, retile, clean up, or restyle anything already present.',
       'Keep the same walls, tile, grout, curb or bathtub, floor, ceiling, niches, windows, fixtures, furniture, reflections, lighting, camera position, perspective, proportions, and visible imperfections.',
-      'Only add the glass enclosure components required by the selected configuration: transparent glass panels, door where applicable, and realistic minimal shower hardware such as hinges, handle, clips, channel or sliding hardware as appropriate.',
+      'Only add the glass enclosure components required by the selected configuration. Match the selected approved glass appearance and hardware finish faithfully. Add a handle only when appropriate for the selected configuration and use the approved handle style when one was supplied.',
       'Keep all new glass and hardware physically aligned to the existing shower opening and perspective.',
       'Do not add dimensions, labels, logos, people, decorations, pricing, text, construction changes, or unrelated objects.',
       'Do not imply that dimensions are verified or fabrication-ready.',
@@ -248,7 +306,7 @@ Deno.serve(async request => {
 
     form.append(
       'model',
-      Deno.env.get('OPENAI_IMAGE_MODEL') || 'gpt-image-1'
+      Deno.env.get('OPENAI_IMAGE_MODEL') || 'gpt-image-2'
     );
 
     form.append(
@@ -304,6 +362,9 @@ Deno.serve(async request => {
         image: `data:image/jpeg;base64,${base64}`,
         configuration,
         geometry,
+        glassType,
+        hardwareFinish,
+        handleStyle: handleStyle || null,
         conceptual: true
       },
       200,

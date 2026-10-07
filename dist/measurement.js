@@ -57,6 +57,91 @@
         measurement:responsible?{width:Math.round(raw.widthInches),height:Math.round(raw.heightInches),confidence:raw.confidence,basis:raw.basis.slice(0,300),referenceSuggestion:''}:{width:null,height:null,confidence:Number.isFinite(raw?.confidence)?Math.max(0,Math.min(1,raw.confidence)):0,basis:typeof raw?.basis==='string'?raw.basis.slice(0,300):'',referenceSuggestion:typeof raw?.referenceSuggestion==='string'&&raw.referenceSuggestion.trim()?raw.referenceSuggestion.slice(0,240):'Add one straight-on photo with a clearly known-size reference, or provide one known measurement.'}};
     }});
   }
+  const previewUnavailableProvider = Object.freeze({
+    id:'server-preview',
+    available:false,
+    async preview(){throw new Error('AI shower preview is not configured.');}
+  });
+
+  function createPreviewProvider({endpoint, apiKey, fetchImpl = fetch} = {}) {
+    return Object.freeze({
+      id:'server-preview',
+      available:Boolean(endpoint),
+      async preview({file,configuration,geometry,glassType='',hardwareFinish='',handleStyle='',signal}) {
+        if (!(file instanceof Blob) ||
+            !['image/jpeg','image/png','image/webp'].includes(file.type) ||
+            file.size < 1 ||
+            file.size > 8*1024*1024) {
+          throw new Error('Choose a JPG, PNG or WebP photo no larger than 8 MB.');
+        }
+
+        if (!endpoint) {
+          throw new Error('AI shower preview is not configured.');
+        }
+
+        if (!configurations.includes(configuration) ||
+            configuration === configurations[5]) {
+          throw new Error('Choose a confirmed shower configuration first.');
+        }
+
+        if (!geometries.includes(geometry) ||
+            geometry === 'unclear' ||
+            !compatibleConfigurations[geometry]?.includes(configuration)) {
+          throw new Error('The selected shower configuration is not compatible with this opening.');
+        }
+
+        const dataUrl = await new Promise((resolve,reject)=>{
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Could not read that photo.'));
+          reader.readAsDataURL(file);
+        });
+
+        const response = await fetchImpl(endpoint,{
+          method:'POST',
+          headers:{
+            'content-type':'application/json',
+            ...(apiKey ? {apikey:apiKey,authorization:`Bearer ${apiKey}`} : {})
+          },
+          body:JSON.stringify({
+            image:dataUrl,
+            configuration,
+            geometry,
+            glassType,
+            hardwareFinish,
+            handleStyle
+          }),
+          signal
+        });
+
+        const payload = await response.json().catch(()=>({}));
+
+        if (!response.ok) {
+          throw new Error(
+            typeof payload.error === 'string'
+              ? payload.error
+              : 'AI shower preview is temporarily unavailable.'
+          );
+        }
+
+        if (typeof payload.image !== 'string' ||
+            !payload.image.startsWith('data:image/') ||
+            payload.configuration !== configuration ||
+            payload.geometry !== geometry ||
+            payload.conceptual !== true) {
+          throw new Error('AI shower preview returned an invalid response.');
+        }
+
+        return {
+          image:payload.image,
+          configuration:payload.configuration,
+          geometry:payload.geometry,
+          conceptual:true
+        };
+      }
+    });
+  }
+
   function normalizeSuggestion(result) {
     if (result?.status !== 'suggested') return null;
     if (result.unit !== 'in' || !Number.isFinite(result.width) || result.width <= 0 ||
@@ -109,7 +194,7 @@
     if (placement === 'shower' && openingGeometry === 'corner') return [{configuration:'90° Corner', reason:'You selected a shower with a corner opening.'}];
     return [];
   }
-  function mount({host, photosInput, widthInput, heightInput, getContext, onConfigurationSelect=()=>{}, visionProvider=visionUnavailableProvider, provider = unavailableProvider}) {
+  function mount({host, photosInput, widthInput, heightInput, getContext, onConfigurationSelect=()=>{}, visionProvider=visionUnavailableProvider, previewProvider=previewUnavailableProvider, provider = unavailableProvider}) {
     const session = createSession(provider);
     const panel = document.createElement('section');
     panel.className = 'scan-result'; panel.hidden = true;
@@ -118,6 +203,11 @@
       <div class="scan-result-content"><p class="eyebrow">PHOTO / MEASURE</p><h3>Review your space</h3>
       <p class="scan-result-status" role="status" aria-live="polite"></p>
       <button type="button" class="button button-dark" data-analyze-photo>Analyze photo</button><div data-vision-result hidden></div>
+      <div class="ai-photo-preview" data-ai-photo-preview hidden>
+        <p class="eyebrow">AI VISUALIZATION — CONCEPTUAL</p>
+        <img data-ai-preview-image alt="Conceptual Bruno's shower glass visualization on your project photo" />
+        <p class="scan-approximate-note">Conceptual visualization only. Final glass dimensions and installation details require Bruno's professional field measurement.</p>
+      </div>
       <p class="ai-estimate-label" data-ai-estimate-label hidden>AI ESTIMATED — PLEASE CONFIRM</p>
       <dl class="scan-dimensions" hidden><div><dt>AI estimated width</dt><dd data-scan-width></dd></div><div><dt>AI estimated height</dt><dd data-scan-height></dd></div><div><dt>Visual confidence</dt><dd data-scan-quality></dd></div></dl>
       <label class="ai-measurement-confirmation" data-ai-confirmation hidden><input type="checkbox" data-confirm-ai-measurement /> I reviewed these AI estimates and confirm or edited the width and height for a preliminary quote.</label>
@@ -127,6 +217,8 @@
     host.append(panel);
     const status = panel.querySelector('.scan-result-status');
     const analyzeButton=panel.querySelector('[data-analyze-photo]'), visionResult=panel.querySelector('[data-vision-result]');
+    const aiPhotoPreview=panel.querySelector('[data-ai-photo-preview]');
+    const aiPreviewImage=panel.querySelector('[data-ai-preview-image]');
     const dimensions = panel.querySelector('.scan-dimensions');
     const use = panel.querySelector('[data-use-measurement]');
     const correction = panel.querySelector('.scan-correction-note');
@@ -153,6 +245,7 @@
       measurementSource:aiEstimate?(aiEdited?'ai_estimated_edited':'ai_estimated_confirmed'):'customer_manual',explicitlyConfirmed:!aiEstimate||confirmAi.checked});
     let objectUrl, generation = 0;
     let analysisController;
+    let previewController;
     let aiEstimate=null, aiEdited=false, applyingAI=false;
     const clearPreview = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = null; image.removeAttribute('src'); preview.hidden = true; };
     function render(state) {
@@ -180,7 +273,7 @@
     analyzeButton.addEventListener('click',async()=>{
       const file=[...photosInput.files].find(item=>['image/jpeg','image/png','image/webp'].includes(item.type)&&item.size>0&&item.size<=8*1024*1024);
       if(!file){status.textContent='Choose a JPG, PNG or WebP photo up to 8 MB. Manual tape measurements are always available.';return;}
-      analysisController?.abort();analysisController=new AbortController();const analysisGeneration=generation;analyzeButton.disabled=true;visionResult.hidden=true;visionResult.replaceChildren();
+      analysisController?.abort();analysisController=new AbortController();previewController?.abort();aiPhotoPreview.hidden=true;aiPreviewImage.removeAttribute('src');const analysisGeneration=generation;analyzeButton.disabled=true;visionResult.hidden=true;visionResult.replaceChildren();
       if(aiEstimate){widthInput.value='';heightInput.value='';widthInput.dispatchEvent(new Event('input',{bubbles:true}));heightInput.dispatchEvent(new Event('input',{bubbles:true}));aiEstimate=null;aiEdited=false;aiEstimateLabel.hidden=true;aiConfirmation.hidden=true;confirmAi.checked=false;}
       status.textContent='Analyzing the selected photo securely…';
       try {
@@ -191,7 +284,121 @@
         if(result.category==='shower_glass'){
           const geometrySummary=document.createElement('p');geometrySummary.textContent=`Opening geometry: ${geometryNames[result.geometry]} (${Math.round(result.geometryConfidence*100)}% AI estimate). ${result.geometryReasoning}`;visionResult.append(geometrySummary);
           for(const [index,recommendation] of result.recommendations.entries()){
-            const figure=document.createElement('figure');figure.className='vision-recommendation';const needsReview=recommendation.configuration===configurations[5];const example=document.createElement('img');example.src=getConfigurationImage(result.geometry,recommendation.configuration,objectUrl);example.alt=needsReview?'Your photo for Bruno to review':`${geometryNames[result.geometry]} — ${recommendation.configuration} reference`;example.loading='lazy';const caption=document.createElement('figcaption');const rank=needsReview?'Bruno review':index===0?'Best match':index===1?'Alternative':'Compatible option';caption.textContent=needsReview?'Not Sure — Let Bruno’s recommend it':`${rank}: ${recommendation.configuration} · ${geometryNames[result.geometry]}`;figure.append(example,caption);const button=document.createElement('button');button.type='button';button.className='button button-quiet';button.textContent=needsReview?'Ask Bruno to recommend a layout':`Choose ${recommendation.configuration}`;const reason=document.createElement('p');reason.textContent=recommendation.reason;button.addEventListener('click',()=>{onConfigurationSelect(recommendation.configuration);status.textContent=`You selected ${recommendation.configuration}. You can change it before continuing.`;});visionResult.append(figure,reason,button);
+            const figure=document.createElement('figure');
+            figure.className='vision-recommendation';
+            const needsReview=recommendation.configuration===configurations[5];
+
+            const example=document.createElement('img');
+            example.src=getConfigurationImage(result.geometry,recommendation.configuration,objectUrl);
+            example.alt=needsReview
+              ? 'Your photo for Bruno to review'
+              : `${geometryNames[result.geometry]} — ${recommendation.configuration} reference`;
+            example.loading='lazy';
+
+            const caption=document.createElement('figcaption');
+            const rank=needsReview
+              ? 'Bruno review'
+              : index===0
+                ? 'Best match'
+                : index===1
+                  ? 'Alternative'
+                  : 'Compatible option';
+
+            caption.textContent=needsReview
+              ? 'Not Sure — Let Bruno’s recommend it'
+              : `${rank}: ${recommendation.configuration} · ${geometryNames[result.geometry]}`;
+
+            figure.append(example,caption);
+
+            const button=document.createElement('button');
+            button.type='button';
+            button.className='button button-quiet';
+            button.textContent=needsReview
+              ? 'Ask Bruno to recommend a layout'
+              : `Choose ${recommendation.configuration}`;
+
+            const reason=document.createElement('p');
+            reason.textContent=recommendation.reason;
+
+            button.addEventListener('click',()=>{
+              onConfigurationSelect(recommendation.configuration);
+              status.textContent=`You selected ${recommendation.configuration}. You can change it before continuing.`;
+            });
+
+            visionResult.append(figure,reason,button);
+
+            if(!needsReview){
+              const previewButton=document.createElement('button');
+              previewButton.type='button';
+              previewButton.className='button button-dark';
+              previewButton.textContent='Preview on My Photo';
+
+              previewButton.addEventListener('click',async()=>{
+                const context=getContext?.()||{};
+                const glassType=context.glassType||'';
+                const hardwareFinish=context.hardwareFinish||'';
+                const handleStyle=context.handleStyle||'';
+
+                if(!glassType || glassType==='Other'){
+                  status.textContent='Choose an approved shower glass type before generating your preview.';
+                  return;
+                }
+
+                if(!hardwareFinish || hardwareFinish==='Other'){
+                  status.textContent='Choose an approved hardware finish before generating your preview.';
+                  return;
+                }
+
+                const previewFile=[...photosInput.files].find(item=>
+                  ['image/jpeg','image/png','image/webp'].includes(item.type) &&
+                  item.size>0 &&
+                  item.size<=8*1024*1024
+                );
+
+                if(!previewFile){
+                  status.textContent='Choose a JPG, PNG or WebP photo up to 8 MB before generating your preview.';
+                  return;
+                }
+
+                onConfigurationSelect(recommendation.configuration);
+
+                previewController?.abort();
+                previewController=new AbortController();
+                const previewGeneration=generation;
+
+                previewButton.disabled=true;
+                aiPhotoPreview.hidden=true;
+                aiPreviewImage.removeAttribute('src');
+                status.textContent='Creating your conceptual Bruno’s Glass preview on the original photo…';
+
+                try{
+                  const generated=await previewProvider.preview({
+                    file:previewFile,
+                    configuration:recommendation.configuration,
+                    geometry:result.geometry,
+                    glassType,
+                    hardwareFinish,
+                    handleStyle,
+                    signal:previewController.signal
+                  });
+
+                  if(previewGeneration!==generation)return;
+
+                  aiPreviewImage.src=generated.image;
+                  aiPhotoPreview.hidden=false;
+                  status.textContent='Conceptual preview ready. Your original room remains unchanged; only the selected shower glass and hardware are visualized.';
+                  aiPhotoPreview.scrollIntoView({behavior:'smooth',block:'nearest'});
+                }catch(error){
+                  if(previewGeneration!==generation)return;
+                  if(error?.name==='AbortError')return;
+                  status.textContent=error?.message||'AI shower preview is temporarily unavailable.';
+                }finally{
+                  if(previewGeneration===generation)previewButton.disabled=false;
+                }
+              });
+
+              visionResult.append(previewButton);
+            }
           }
         }
         const measure=result.measurement;
@@ -227,7 +434,7 @@
       widthInput.focus();
     });
     async function selected() {
-      const current = ++generation; session.cancel(); analysisController?.abort(); clearPreview();visionResult.hidden=true;visionResult.replaceChildren();
+      const current = ++generation; session.cancel(); analysisController?.abort(); previewController?.abort(); aiPhotoPreview.hidden=true;aiPreviewImage.removeAttribute('src');clearPreview();visionResult.hidden=true;visionResult.replaceChildren();
       if(aiEstimate){widthInput.value='';heightInput.value='';widthInput.dispatchEvent(new Event('input',{bubbles:true}));heightInput.dispatchEvent(new Event('input',{bubbles:true}));}
       aiEstimate=null;aiEdited=false;aiEstimateLabel.hidden=true;aiConfirmation.hidden=true;confirmAi.checked=false;dimensions.hidden=true;renderOpeningBox(null,null);
       const files = [...photosInput.files]; panel.hidden = !files.length; correction.textContent = '';
@@ -251,5 +458,5 @@
     return Object.freeze({snapshot:session.snapshot, confirm:session.confirm, reset,
       isConfirmed(){return !aiEstimate||confirmAi.checked;},getMeasurementRecord(width,height){return recordMeasurement(width,height);}});
   }
-  globalThis.BrunoMeasurement = Object.freeze({unavailableProvider, unavailableMessage, visionUnavailableProvider, createVisionProvider, normalizeSuggestion, inches, createSession, recommend, mount, compatibleConfigurations, getConfigurationImage});
+  globalThis.BrunoMeasurement = Object.freeze({unavailableProvider, unavailableMessage, visionUnavailableProvider, createVisionProvider, previewUnavailableProvider, createPreviewProvider, normalizeSuggestion, inches, createSession, recommend, mount, compatibleConfigurations, getConfigurationImage});
 })();

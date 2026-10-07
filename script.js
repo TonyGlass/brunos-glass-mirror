@@ -1660,8 +1660,16 @@ function setupQuoteWizard() {
     widthInput?.focus({preventScroll:true});
   });
   window.QuoteMeasurement = window.BrunoMeasurement.mount({host:scanChoices, photosInput, widthInput, heightInput,
-    getContext:() => ({projectType:customQuoteService || serviceSelect.value, manualWidth:widthInput.value, manualHeight:heightInput.value}),
+    getContext:() => ({
+      projectType:customQuoteService || serviceSelect.value,
+      manualWidth:widthInput.value,
+      manualHeight:heightInput.value,
+      glassType:glassTypeSelect.value,
+      hardwareFinish:hardwareFinishSelect.value,
+      handleStyle:handleStyleSelect.value
+    }),
     visionProvider:window.BrunoMeasurement.createVisionProvider({endpoint:`${SUPABASE_URL}/functions/v1/analyze-photo`,apiKey:SUPABASE_PUBLISHABLE_KEY}),
+    previewProvider:window.BrunoMeasurement.createPreviewProvider({endpoint:`${SUPABASE_URL}/functions/v1/preview-shower`,apiKey:SUPABASE_PUBLISHABLE_KEY}),
     onConfigurationSelect:name=>{if(products.some(item=>item.name===name)){productSelect.value=name;productSelect.dispatchEvent(new Event('change',{bubbles:true}));}},
     provider:window.BrunoMeasurementProvider || window.BrunoMeasurement.unavailableProvider});
   const geometry = document.createElement('fieldset');
